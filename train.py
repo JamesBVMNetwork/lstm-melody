@@ -19,20 +19,15 @@ import matplotlib.pyplot as plt
 # from IPython import *
 from music21 import *
 from music21 import converter, instrument, note, chord, stream, midi
-import glob
-import time
 import numpy as np
-import keras.utils as utils
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from tensorflow import distribute
 import struct
 import base64
 import json
-import site
+import tempfile as tmp
 import argparse
 
-strategy = distribute.MirroredStrategy(["GPU:0", "GPU:1"])
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:
 # MELODY_NOTE_ON = [0, 127] # (note on at that MIDI pitch)
@@ -45,7 +40,7 @@ VOCAB_SIZE = 130
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-path", type=str, default = "./outputs", help = "Path to output directory")
+    parser.add_argument("--output-path", type=str, default = "./outputs", help="Path to the output file")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
@@ -143,37 +138,45 @@ def make_training_data(dirname):
         targets = [note_on[i]]
         targets = to_categorical(targets, num_classes=VOCAB_SIZE)
         labels.append(targets)
+
     return training_data,labels
 
-def create_model(num_units, ckpt = None):
-    if ckpt is not None:
-        model = tf.keras.models.load_model(ckpt)
+def create_model(rnn_units, model_path = None):
+
+    if model_path is not None:
+        model = tf.keras.models.load_model(model_path)
         return model
+
+    model = tf.keras.models.Sequential()
     
-    model = Sequential()
-
-    model.add(LSTM(num_units, input_shape=(20, 1), unroll=True,
+    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
                 return_sequences=True, implementation=1))
-    model.add(Dropout(0.4))
-    # model.add(LSTM(num_units // 2, return_sequences=True, implementation=1))
-    # model.add(Dense(num_units // 2, 'relu'))
-    # model.add(Dropout(0.2))
-    model.add(Dense(VOCAB_SIZE, 'softmax'))
-
-    model.compile(loss='MSE', optimizer='adam') 
-    model.summary()
-
+    
+    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
+                return_sequences=True, implementation=1))
+    
+    model.add(Dropout(0.2))
+    model.add(Dense(130, 'softmax'))
+    model.compile(loss='MSE', optimizer='adam')
     return model
 
-def train(training_data, labels, num_units=128, num_epochs=20, loss='MSE', optimizer='adam', early_stop=True, output_path = './model.json', checkpoint_path = None):
-    num_units = int(num_units)
-    num_epochs = int(num_epochs)
-    early_stop = early_stop == 'True'
+def train(training_data, labels, config, output_path = './model.json', checkpoint_path = None):
+    num_units = config['rnn_units']
+    num_epochs = config['epoch_num']
+    batch_size = config['batch_size']
+    
+    early_stop = True
 
     model = create_model(num_units, checkpoint_path)
 
-    early_stop_cb = EarlyStopping(
-        monitor='val_loss', patience=20, verbose=0)
+    early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
+    
+    tmp_file = tmp.NamedTemporaryFile()
+    checkpoint_callback = ModelCheckpoint(
+        filepath=tmp_file, 
+        save_best_only=True, 
+        monitor = "loss"    
+    )
 
     training_data = np.array(training_data)
     training_data = training_data.reshape(
@@ -183,8 +186,9 @@ def train(training_data, labels, num_units=128, num_epochs=20, loss='MSE', optim
     # train
     X_train, X_test, y_train, y_test = train_test_split(
         training_data, labels, test_size=0.05, random_state=42)
-    model.fit(X_train, y_train, epochs=num_epochs, batch_size=32 * strategy.num_replicas_in_sync,
-              validation_data=(X_test, y_test), callbacks=([early_stop_cb] if early_stop else []))
+    model.fit(X_train, y_train, epochs=num_epochs, batch_size=batch_size,
+              validation_data=(X_test, y_test), callbacks=[checkpoint_callback, early_stop_cb])
+
     get_model_for_export(output_path, model)
 
 def get_weights(model):
@@ -287,116 +291,22 @@ def get_model_for_export(fname, model):
         }, f)
     return weight_base64, compressed_config
 
-# prediction
-# def _sample_with_temperature(probabilites, temperature):
-#     """Samples an index from a probability array reapplying softmax using temperature
-
-#     :param predictions (nd.array): Array containing probabilities for each of the possible outputs.
-#     :param temperature (float): Float in interval [0, 1]. Numbers closer to 0 make the model more deterministic.
-#         A number closer to 1 makes the generation more unpredictable.
-
-#     :return index (int): Selected output symbol
-#     """
-#     predictions = np.log(probabilites) / temperature
-#     probabilites = np.exp(predictions) / np.sum(np.exp(predictions))
-
-#     choices = range(len(probabilites))
-#     index = np.random.choice(choices, p=probabilites)
-
-#     return index
-
-# def generate_melody(training_data,model):
-#     model=load_trained_model(output)
-
-#     n = 100
-#     # randomize the starter notes
-#     index = np.random.choice(len(training_data))
-#     starter_notes = np.array(training_data[index])
-#     x = starter_notes.reshape(1, 20, 1)
-#     # print("starter: ", x.shape)
-#     tune = list(starter_notes.reshape(-1,))
-#     for i in range(n):
-#         out = model.predict(x)[:, 0:1, :]
-#         # print("output shape: ", out.shape)
-#         # pred = int(out[0][out.shape[1]-1][0])
-#         next_note = out[0][0]
-#         pred = _sample_with_temperature(next_note, 0.5)
-#         # if round(pred) == round(tune[-1]):
-#         #     p = np.random.choice(['a', 'b', 'c'])
-#         #     if p == 'a':
-#         #         pred = 65
-#         #     elif p == 'b':
-#         #         pred = 60
-#         #     else:
-#         #         pred = 70
-#         tune.append(pred)
-#         # add out to x
-#         vec = np.zeros((1, 1, 1))
-#         vec[0][0][0] = pred
-#         x = np.append(x, vec, axis=1)
-#         x = x[:, -20:, :]
-#         # print("x shape: ", x.shape)
-#         # x = x.reshape(1, inputlen, VOCAB_SIZE)
-
-#     tune = list(np.array(tune).astype('float32'))
-#     print("generated melody", tune)
-
-#     # encoder
-
-#     offset = 0
-
-#     output_notes = []
-#     output_melody_stream = stream.Stream()
-#     # create note and chord objects based on the values generated by the model
-#     for patterns in tune:
-#         pattern = str(patterns)
-#         # pattern is a chord
-#         if ('.' in pattern) or pattern.isdigit():
-#             notes_in_chord = pattern.split('.')
-#             notes = []
-#             for current_note in notes_in_chord:
-#                 new_note = note.Note(int(current_note))
-#                 new_note.storedInstrument = instrument.Piano()
-#                 notes.append(new_note)
-#             new_chord = chord.Chord(notes)
-#             new_chord.offset = offset
-#             output_notes.append(new_chord)
-#             output_melody_stream.append(new_chord)
-#         # pattern is a note
-#         else:
-#             new_note = note.Note(pattern)
-#             new_note.offset = offset
-#             new_note.storedInstrument = instrument.Piano()
-#             output_notes.append(new_note)
-#             output_melody_stream.append(new_note)
-#         # increase offset each iteration so that notes do not stack
-#         offset += 0.5
-
-#     # write to midi file
-#     output_melody_stream.write('midi', fp='musicnetgen.mid')
-#     # print(output_melody_stream)
-
-#     # print(output_melody_stream)
-#     # output_melody_stream.show()
-
 def main():
     args = parse_args()
 
     data_dir = args.data_dir
-    output_dir = args.output_dir
+    output_path = args.output_path
     ckpt = args.checkpoint_path
     config_path = args.config_path
 
     with open(config_path, 'r') as f:
         config = json.load(f)
-    num_units = config["rnn_units"]
-    num_epochs = config["epoch_num"]
 
     training_data,labels=None,None
     training_data,labels=make_training_data(data_dir)
     
 
-    train(training_data,labels,num_units,num_epochs,'MSE','adam', True, output_path, ckpt)
+    train(training_data, labels, config, output_path = output_path, checkpoint_path = ckpt)
 
 if __name__ == "__main__":
     main()
