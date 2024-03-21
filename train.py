@@ -117,19 +117,15 @@ def make_training_data(data_dir, sequence_length=20):
                             if event.type == 'note_on':
                                 note_on.append(event.note)
 
-    inputs = []
-    targets = []
-
-    # generate the training sequences
-    num_sequences = len(note_on) - sequence_length
-
-    for i in range(num_sequences):
-        inputs.append(note_on[i:i+sequence_length])
-        targets.append(note_on[i+sequence_length])
-
-    inputs = tf.keras.utils.to_categorical(inputs, num_classes= MELODY_SIZE)
-    targets = np.array(targets)
-    print(f"There are {len(inputs)} sequences.")
+    training_data = []
+    labels = []
+    for i in range(sequence_length, len(note_on)):
+        inputs = note_on[i - sequence_length:i]
+        # inputs = to_categorical(inputs, num_classes=VOCAB_SIZE)
+        training_data.append(inputs)
+        targets = [note_on[i]]
+        targets = tf.keras.utils.to_categorical(targets, num_classes= MELODY_SIZE)
+        labels.append(targets)
     return inputs, targets
 
 
