@@ -132,13 +132,14 @@ def make_training_data(data_dir, sequence_length=20):
     return training_data, labels
 
 
-def build_model(rnn_units, model_path = None):
+def build_model(rnn_units, sequence_length, model_path = None):
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
-    input = tf.keras.layers.Input(shape=(None, MELODY_SIZE))
+    # seuquence length = 
+    input = tf.keras.layers.Input(shape=(sequence_length, 1))
     x = tf.keras.layers.LSTM(rnn_units, return_sequences=True)(input)
     x = tf.keras.layers.LSTM(rnn_units)(x)
     x = tf.keras.layers.Dropout(0.2)(x)
@@ -153,9 +154,9 @@ def build_model(rnn_units, model_path = None):
     model.summary()   
     return model
 
-def create_model(rnn_units, model_path = None):
+def create_model(rnn_units, seq_length, model_path = None):
 
-    model = build_model(rnn_units, model_path)
+    model = build_model(rnn_units, seq_length, model_path)
     loss = tf.losses.SparseCategoricalCrossentropy()
     optimizer = tf.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer = optimizer, loss = loss)
@@ -169,7 +170,7 @@ def train(training_data, labels, config, output_dir='./outputs', checkpoint_path
     num_epochs = config['epoch_num']
     batch_size = config['batch_size']
 
-    model = create_model(config['rnn_units'], checkpoint_path)
+    model = create_model(config['rnn_units'], config['seq_length'], checkpoint_path)
 
     # early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
     checkpoint_callback = ModelCheckpoint(filepath=os.path.join(output_dir, 'model.h5'), save_best_only=True, monitor="loss", verbose=1)
