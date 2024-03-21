@@ -1,14 +1,7 @@
-from mido import MidiFile, MidiTrack, Message
+from mido import MidiFile
 import mido
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import LSTM
-from keras.layers import Embedding
-from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.utils import np_utils, to_categorical
-from keras.models import load_model
+from keras.callbacks import ModelCheckpoint
 import os
 from tqdm import *
 
@@ -109,7 +102,7 @@ def noteArrayToStream(note_array):
     return melody_stream
 
 # making data to train
-def make_training_data(data_dir, sequence_length = 20):
+def make_training_data(data_dir, sequence_length=20):
     note_on = []
 
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
@@ -118,57 +111,72 @@ def make_training_data(data_dir, sequence_length = 20):
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
                 mid = MidiFile(file_path)
-                for j in range(len(mid.tracks)):
-                    for i in mid.tracks[j]:
-                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>":
-                            x = str(i).split(' ')
-                            if x[0] == 'note_on':
-                                note_on.append(int(x[2].split('=')[1]))
+                for track in mid.tracks:
+                    for event in track:
+                        if not isinstance(event, mido.midifiles.meta.MetaMessage):
+                            if event.type == 'note_on':
+                                note_on.append(event.note)
 
-    # making data to train
-    training_data = []
-    labels = []
-    for i in range(sequence_length, len(note_on)):
-        inputs = note_on[i-sequence_length : i]
-        training_data.append(inputs)
-        targets = [note_on[i]]
-        targets = to_categorical(targets, num_classes = MELODY_SIZE)
-        labels.append(targets)
+    inputs = []
+    targets = []
 
-    print(training_data[0], labels[0])
-    return training_data, labels
+    # generate the training sequences
+    num_sequences = len(note_on) - sequence_length
 
-def create_model(rnn_units, model_path=None):
+    for i in range(num_sequences):
+        inputs.append(note_on[i:i+sequence_length])
+        targets.append(note_on[i+sequence_length])
+
+    # inputs size: (# of sequences, sequence length, vocabulary size)
+    inputs = tf.keras.utils.to_categorical(inputs, num_classes= MELODY_SIZE)
+    targets = np.array(targets)
+    print(f"There are {len(inputs)} sequences.")
+    return inputs, targets
+
+
+def build_model(rnn_units, model_path = None):
+
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
-    model = tf.keras.models.Sequential()
-    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True, return_sequences=True, implementation=1))
-    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True, return_sequences=True, implementation=1))
-    model.add(Dropout(0.2))
-    model.add(Dense(130, activation='softmax'))
-    model.compile(loss='MSE', optimizer='adam')
+    input = tf.keras.layers.Input(shape=(None, MELODY_SIZE))
+    x = tf.keras.layers.LSTM(rnn_units, return_sequences=True)(input)
+    x = tf.keras.layers.LSTM(rnn_units)(x)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    output = tf.keras.layers.Dense(MELODY_SIZE, activation="softmax")(x) 
+    model = tf.keras.Model(input, output)
+
+    # compile model
+    model.compile(loss = "sparse_categorical_crossentropy",
+                  optimizer= tf.keras.optimizers.Adam(learning_rate = 0.001),
+                  metrics=["accuracy"])
+
+    model.summary()   
     return model
 
+def create_model(rnn_units, model_path = None):
+
+    model = build_model(rnn_units, model_path)
+    loss = tf.losses.SparseCategoricalCrossentropy()
+    optimizer = tf.optimizers.Adam(learning_rate=0.001)
+    model.compile(optimizer = optimizer, loss = loss)
+    return model
+
+def split_train_test(data, labels, test_size = 0.2):
+    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size = test_size, random_state = 42)
+    return X_train, X_test, y_train, y_test
+
 def train(training_data, labels, config, output_dir='./outputs', checkpoint_path=None):
-    num_units = config['rnn_units']
     num_epochs = config['epoch_num']
     batch_size = config['batch_size']
-    early_stop = True
 
-    model = create_model(num_units, checkpoint_path)
+    model = create_model(config['rnn_units'], checkpoint_path)
 
-    early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
+    # early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
     checkpoint_callback = ModelCheckpoint(filepath=os.path.join(output_dir, 'model.h5'), save_best_only=True, monitor="loss", verbose=1)
-
-    training_data = np.array(training_data)
-    training_data = training_data.reshape((training_data.shape[0], training_data.shape[1], 1))
-    labels = np.array(labels)
-
-    X_train, X_test, y_train, y_test = train_test_split(training_data, labels, test_size=0.05, random_state=42)
-    model.fit(X_train, y_train, epochs=num_epochs, batch_size=batch_size, validation_data=(X_test, y_test), callbacks=[checkpoint_callback, early_stop_cb])
-
+    # X_train, y_train, X_test, y_test = split_train_test(training_data, labels)
+    model.fit(training_data, labels, epochs=num_epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
     output_checkpoint_file = os.path.join(output_dir, 'model.h5')
     output_file = os.path.join(output_dir, 'model.json')
     model.save(output_checkpoint_file)
@@ -281,15 +289,13 @@ def main():
     output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
-    sequence_length = config["seq_length"]
-
     with open(config_path, 'r') as f:
         config = json.load(f)
 
+    sequence_length = config["seq_length"]
     training_data, labels = make_training_data(data_dir, sequence_length)
-    
 
-    # train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
+    train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
 
 if __name__ == "__main__":
     main()
