@@ -141,19 +141,13 @@ def make_training_data(dirname):
 
     return training_data,labels
 
-def create_model(embedding_dim, rnn_units, batch_size, model_path = None):
+def create_model(rnn_units, model_path = None):
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
     model = tf.keras.models.Sequential()
-
-    model.add(tf.keras.layers.Embedding(
-        input_dim=20,
-        output_dim=embedding_dim,
-        batch_input_shape=[batch_size, None]
-    ))
     
     model.add(tf.keras.layers.LSTM(
         units = rnn_units,
@@ -166,19 +160,18 @@ def create_model(embedding_dim, rnn_units, batch_size, model_path = None):
         return_sequences=True,
         stateful=True,
     ))
-
-    model.add(tf.keras.layers.Dense(vocab_size))
+    model.add(Dropout(0.2))
+    model.add(Dense(130, 'softmax'))
     return model
 
 def train(training_data, labels, config, output_dir = './outputs', checkpoint_path = None):
     num_units = config['rnn_units']
     num_epochs = config['epoch_num']
     batch_size = config['batch_size']
-    embedding_dim = config['embedding_dim']
     
     early_stop = True
 
-    model = create_model(embedding_dim, num_units, batch_size, checkpoint_path)
+    model = create_model(num_units, checkpoint_path)
 
     early_stop_cb = EarlyStopping(
         monitor='val_loss', patience=20, verbose=0)
@@ -313,7 +306,7 @@ def main():
     training_data,labels=make_training_data(data_dir)
     
 
-    train(training_data,labels, config, True, output_dir, ckpt)
+    train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
 
 if __name__ == "__main__":
     main()
