@@ -149,17 +149,12 @@ def create_model(rnn_units, model_path = None):
 
     model = tf.keras.models.Sequential()
     
-    model.add(tf.keras.layers.LSTM(
-        units = rnn_units,
-        return_sequences=True,
-        stateful=True,
-    ))
-
-    model.add(tf.keras.layers.LSTM(
-        units = rnn_units,
-        return_sequences=True,
-        stateful=True,
-    ))
+    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
+                return_sequences=True, implementation=1))
+    
+    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
+                return_sequences=True, implementation=1))
+    
     model.add(Dropout(0.2))
     model.add(Dense(130, 'softmax'))
     model.compile(loss='MSE', optimizer='adam')
