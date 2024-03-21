@@ -162,6 +162,7 @@ def create_model(rnn_units, model_path = None):
     ))
     model.add(Dropout(0.2))
     model.add(Dense(130, 'softmax'))
+    model.compile(loss='MSE', optimizer='adam')
     return model
 
 def train(training_data, labels, config, output_dir = './outputs', checkpoint_path = None):
