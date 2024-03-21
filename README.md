@@ -2,5 +2,5 @@
 LSTM for Melody
 # To run
 ```
-python train_script.py --data-dir DATA_DIR --output-dir OUTPUT_DIR --checkpoint-path PATH_TO_CHECKPOINT --config-path PATH_TO_CONFIG_PATH
+python train_script.py --data-dir DATA_DIR --output-path OUTPUT_PATH --checkpoint-path PATH_TO_CHECKPOINT --config-path PATH_TO_CONFIG_PATH
 ```
