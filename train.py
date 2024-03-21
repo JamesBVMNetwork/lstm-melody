@@ -281,11 +281,12 @@ def main():
     output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
+    sequence_length = config["seq_length"]
 
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    training_data, labels = make_training_data(data_dir)
+    training_data, labels = make_training_data(data_dir, sequence_length)
     
 
     # train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
