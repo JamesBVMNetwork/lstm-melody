@@ -147,7 +147,7 @@ def build_model(rnn_units, sequence_length, model_path = None):
     model = tf.keras.Model(input, output)
 
     # compile model
-    model.compile(loss = "sparse_categorical_crossentropy",
+    model.compile(loss = "MSE",
                   optimizer= tf.keras.optimizers.Adam(learning_rate = 0.001),
                   metrics=["accuracy"])
 
@@ -293,7 +293,6 @@ def main():
 
     sequence_length = config["seq_length"]
     training_data, labels = make_training_data(data_dir, sequence_length)
-    print(labels[0].shape)
 
     train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
 
