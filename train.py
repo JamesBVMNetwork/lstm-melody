@@ -169,8 +169,14 @@ def train(training_data, labels, config, output_dir = './outputs', checkpoint_pa
 
     model = create_model(num_units, checkpoint_path)
 
-    early_stop_cb = EarlyStopping(
-        monitor='val_loss', patience=20, verbose=0)
+    early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
+    
+    checkpoint_callback = ModelCheckpoint(
+        filepath=os.path.join(output_dir, 'model.h5'), 
+        save_best_only=True, 
+        monitor = "loss",
+        verbose=1
+    )
 
     training_data = np.array(training_data)
     training_data = training_data.reshape(
@@ -181,7 +187,7 @@ def train(training_data, labels, config, output_dir = './outputs', checkpoint_pa
     X_train, X_test, y_train, y_test = train_test_split(
         training_data, labels, test_size=0.05, random_state=42)
     model.fit(X_train, y_train, epochs=num_epochs, batch_size=batch_size,
-              validation_data=(X_test, y_test), callbacks=([early_stop_cb] if early_stop else []))
+              validation_data=(X_test, y_test), callbacks=[checkpoint_callback, early_stop_cb])
     output_checkpoint_file = os.path.join(output_dir, 'model.h5')
     output_file = os.path.join(output_dir, 'model.json')
     model.save(output_checkpoint_file)
