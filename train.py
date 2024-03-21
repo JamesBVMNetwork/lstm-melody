@@ -141,7 +141,7 @@ def make_training_data(dirname):
 
     return training_data,labels
 
-def create_model(vocab_size, embedding_dim, rnn_units, batch_size, model_path = None):
+def create_model(embedding_dim, rnn_units, batch_size, model_path = None):
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
@@ -150,7 +150,7 @@ def create_model(vocab_size, embedding_dim, rnn_units, batch_size, model_path = 
     model = tf.keras.models.Sequential()
 
     model.add(tf.keras.layers.Embedding(
-        input_dim=vocab_size,
+        input_dim=20,
         output_dim=embedding_dim,
         batch_input_shape=[batch_size, None]
     ))
@@ -170,12 +170,15 @@ def create_model(vocab_size, embedding_dim, rnn_units, batch_size, model_path = 
     model.add(tf.keras.layers.Dense(vocab_size))
     return model
 
-def train(training_data, labels, batch_size = 32, num_units=128, num_epochs=20, loss='MSE', optimizer='adam', early_stop=True, output_dir = './outputs', checkpoint_path = None):
-    num_units = int(num_units)
-    num_epochs = int(num_epochs)
-    early_stop = early_stop == 'True'
+def train(training_data, labels, config, output_dir = './outputs', checkpoint_path = None):
+    num_units = config['rnn_units']
+    num_epochs = config['epoch_num']
+    batch_size = config['batch_size']
+    embedding_dim = config['embedding_dim']
+    
+    early_stop = True
 
-    model = create_model(num_units, checkpoint_path)
+    model = create_model(embedding_dim, num_units, batch_size, checkpoint_path)
 
     early_stop_cb = EarlyStopping(
         monitor='val_loss', patience=20, verbose=0)
@@ -305,15 +308,12 @@ def main():
 
     with open(config_path, 'r') as f:
         config = json.load(f)
-    num_units = config["rnn_units"]
-    num_epochs = config["epoch_num"]
-    batch_size = config["batch_size"]
 
     training_data,labels=None,None
     training_data,labels=make_training_data(data_dir)
     
 
-    train(training_data,labels, batch_size, num_units, num_epochs, 'MSE','adam', True, output_dir, ckpt)
+    train(training_data,labels, config, True, output_dir, ckpt)
 
 if __name__ == "__main__":
     main()
