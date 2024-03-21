@@ -127,8 +127,7 @@ def make_training_data(data_dir, sequence_length=20):
         targets = tf.keras.utils.to_categorical(targets, num_classes= MELODY_SIZE)
         labels.append(targets)
     training_data = np.array(training_data)
-    # expand final dim
-    training_data = np.expand_dims(training_data, axis=-1)
+    training_data = training_data.reshape((training_data.shape[0], training_data.shape[1], 1))
     labels = np.array(labels)
     return training_data, labels
 
