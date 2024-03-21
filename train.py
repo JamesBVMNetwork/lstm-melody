@@ -124,7 +124,6 @@ def make_training_data(data_dir, sequence_length=20):
         # inputs = to_categorical(inputs, num_classes=VOCAB_SIZE)
         training_data.append(inputs)
         targets = [note_on[i]]
-        targets = tf.keras.utils.to_categorical(targets, num_classes= MELODY_SIZE)
         labels.append(targets)
     training_data = np.array(training_data)
     training_data = training_data.reshape((training_data.shape[0], training_data.shape[1], 1))
@@ -153,7 +152,7 @@ def create_model(rnn_units, seq_length, model_path = None):
 
     model = build_model(rnn_units, seq_length, model_path)
     # compile model
-    model.compile(loss = "categorical_crossentropy",
+    model.compile(loss = "sparse_categorical_crossentropy",
                   optimizer= tf.keras.optimizers.Adam(learning_rate = 0.001),
                   metrics=["accuracy"])
     return model
