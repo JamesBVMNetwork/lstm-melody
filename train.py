@@ -146,20 +146,16 @@ def build_model(rnn_units, sequence_length, model_path = None):
     output = tf.keras.layers.Dense(MELODY_SIZE, activation="softmax")(x) 
     model = tf.keras.Model(input, output)
 
-    # compile model
-    model.compile(loss = "MSE",
-                  optimizer= tf.keras.optimizers.Adam(learning_rate = 0.001),
-                  metrics=["accuracy"])
-
     model.summary()   
     return model
 
 def create_model(rnn_units, seq_length, model_path = None):
 
     model = build_model(rnn_units, seq_length, model_path)
-    loss = tf.losses.SparseCategoricalCrossentropy()
-    optimizer = tf.optimizers.Adam(learning_rate=0.001)
-    model.compile(optimizer = optimizer, loss = loss)
+    # compile model
+    model.compile(loss = "categorical_crossentropy",
+                  optimizer= tf.keras.optimizers.Adam(learning_rate = 0.001),
+                  metrics=["accuracy"])
     return model
 
 def split_train_test(data, labels, test_size = 0.2):
