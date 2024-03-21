@@ -127,9 +127,10 @@ def make_training_data(data_dir, sequence_length=20):
         inputs.append(note_on[i:i+sequence_length])
         targets.append(note_on[i+sequence_length])
 
-    # inputs size: (# of sequences, sequence length, vocabulary size)
-    inputs = tf.keras.utils.to_categorical(inputs, num_classes= MELODY_SIZE)
-    targets = np.array(targets)
+    # convert inputs to float64
+    inputs = np.array(inputs, dtype=np.float64)
+    inputs = tf.keras.utils.to_categorical(inputs, num_classes=MELODY_SIZE)
+    targets = np.array(targets, dtype=np.float64)
     print(f"There are {len(inputs)} sequences.")
     return inputs, targets
 
