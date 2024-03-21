@@ -12,11 +12,6 @@ from keras.models import load_model
 import os
 from tqdm import *
 
-import pygame
-# import IPython
-import matplotlib.pyplot as plt
-# import librosa.display
-# from IPython import *
 from music21 import *
 from music21 import converter, instrument, note, chord, stream, midi
 import numpy as np
@@ -25,7 +20,7 @@ from sklearn.model_selection import train_test_split
 import struct
 import base64
 import json
-import site
+import glob
 import argparse
 
 
@@ -35,7 +30,7 @@ MELODY_NOTE_OFF = 128  # (stop playing all previous notes)
 MELODY_NO_EVENT = 129  # (no change from previous event)
 # Each element in the sequence lasts for one sixteenth note.
 # This can encode monophonic music only.
-VOCAB_SIZE = 130
+MELODY_SIZE = 130
 
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
@@ -114,13 +109,15 @@ def noteArrayToStream(note_array):
     return melody_stream
 
 # making data to train
-def make_training_data(dirname):
+def make_training_data(data_dir, sequence_length = 20):
     note_on = []
-    for currentpath,_, files in os.walk(dirname):
-        for file in files:
-            path = os.path.join(currentpath, file)
-            if path.endswith('.mid') or path.endswith('.midi'):
-                mid = MidiFile(path)
+
+    fold_paths = glob.glob(os.path.join(data_dir, '*'))
+    for fold_path in fold_paths:
+        file_paths = glob.glob(os.path.join(fold_path, '*'))
+        for file_path in file_paths:
+            if file_path.endswith('.mid') or file_path.endswith('.midi'):
+                mid = MidiFile(file_path)
                 for j in range(len(mid.tracks)):
                     for i in mid.tracks[j]:
                         if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>":
@@ -131,63 +128,47 @@ def make_training_data(dirname):
     # making data to train
     training_data = []
     labels = []
-    for i in range(20, len(note_on)):
-        inputs = note_on[i-20:i]
-        # inputs = to_categorical(inputs, num_classes=VOCAB_SIZE)
+    for i in range(sequence_length, len(note_on)):
+        inputs = note_on[i-sequence_length : i]
         training_data.append(inputs)
         targets = [note_on[i]]
-        targets = to_categorical(targets, num_classes=VOCAB_SIZE)
+        targets = to_categorical(targets, num_classes = MELODY_SIZE)
         labels.append(targets)
 
-    return training_data,labels
+    print(training_data[0], labels[0])
+    return training_data, labels
 
-def create_model(rnn_units, model_path = None):
-
+def create_model(rnn_units, model_path=None):
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
     model = tf.keras.models.Sequential()
-    
-    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
-                return_sequences=True, implementation=1))
-    
-    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
-                return_sequences=True, implementation=1))
-    
+    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True, return_sequences=True, implementation=1))
+    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True, return_sequences=True, implementation=1))
     model.add(Dropout(0.2))
-    model.add(Dense(130, 'softmax'))
+    model.add(Dense(130, activation='softmax'))
     model.compile(loss='MSE', optimizer='adam')
     return model
 
-def train(training_data, labels, config, output_dir = './outputs', checkpoint_path = None):
+def train(training_data, labels, config, output_dir='./outputs', checkpoint_path=None):
     num_units = config['rnn_units']
     num_epochs = config['epoch_num']
     batch_size = config['batch_size']
-    
     early_stop = True
 
     model = create_model(num_units, checkpoint_path)
 
     early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
-    
-    checkpoint_callback = ModelCheckpoint(
-        filepath=os.path.join(output_dir, 'model.h5'), 
-        save_best_only=True, 
-        monitor = "loss",
-        verbose=1
-    )
+    checkpoint_callback = ModelCheckpoint(filepath=os.path.join(output_dir, 'model.h5'), save_best_only=True, monitor="loss", verbose=1)
 
     training_data = np.array(training_data)
-    training_data = training_data.reshape(
-        (training_data.shape[0], training_data.shape[1], 1))
+    training_data = training_data.reshape((training_data.shape[0], training_data.shape[1], 1))
     labels = np.array(labels)
 
-    # train
-    X_train, X_test, y_train, y_test = train_test_split(
-        training_data, labels, test_size=0.05, random_state=42)
-    model.fit(X_train, y_train, epochs=num_epochs, batch_size=batch_size,
-              validation_data=(X_test, y_test), callbacks=[checkpoint_callback, early_stop_cb])
+    X_train, X_test, y_train, y_test = train_test_split(training_data, labels, test_size=0.05, random_state=42)
+    model.fit(X_train, y_train, epochs=num_epochs, batch_size=batch_size, validation_data=(X_test, y_test), callbacks=[checkpoint_callback, early_stop_cb])
+
     output_checkpoint_file = os.path.join(output_dir, 'model.h5')
     output_file = os.path.join(output_dir, 'model.json')
     model.save(output_checkpoint_file)
@@ -304,11 +285,10 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    training_data,labels=None,None
-    training_data,labels=make_training_data(data_dir)
+    training_data, labels = make_training_data(data_dir)
     
 
-    train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
+    # train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
 
 if __name__ == "__main__":
     main()
