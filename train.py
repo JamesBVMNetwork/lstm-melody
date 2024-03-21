@@ -126,7 +126,11 @@ def make_training_data(data_dir, sequence_length=20):
         targets = [note_on[i]]
         targets = tf.keras.utils.to_categorical(targets, num_classes= MELODY_SIZE)
         labels.append(targets)
-    return inputs, targets
+    training_data = np.array(training_data)
+    # expand final dim
+    training_data = np.expand_dims(training_data, axis=-1)
+    labels = np.array(labels)
+    return training_data, labels
 
 
 def build_model(rnn_units, model_path = None):
