@@ -1,4 +1,5 @@
 {
-    "epoch_num": 20,
-    "rnn_units": 128
+    "rnn_units": 128,
+    "batch_size": 512,
+    "epoch_num": 15  
 }

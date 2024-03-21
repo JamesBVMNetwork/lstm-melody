@@ -45,7 +45,7 @@ VOCAB_SIZE = 130
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-dir", type=str, default = "./outputs", help = "Path to output directory")
+    parser.add_argument("--output-path", type=str, default = "./outputs", help = "Path to output directory")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
@@ -165,7 +165,7 @@ def create_model(num_units, ckpt = None):
 
     return model
 
-def train(training_data, labels, num_units=128, num_epochs=20, loss='MSE', optimizer='adam', early_stop=True, output_dir = './outputs', checkpoint_path = None):
+def train(training_data, labels, num_units=128, num_epochs=20, loss='MSE', optimizer='adam', early_stop=True, output_path = './model.json', checkpoint_path = None):
     num_units = int(num_units)
     num_epochs = int(num_epochs)
     early_stop = early_stop == 'True'
@@ -185,10 +185,7 @@ def train(training_data, labels, num_units=128, num_epochs=20, loss='MSE', optim
         training_data, labels, test_size=0.05, random_state=42)
     model.fit(X_train, y_train, epochs=num_epochs, batch_size=32 * strategy.num_replicas_in_sync,
               validation_data=(X_test, y_test), callbacks=([early_stop_cb] if early_stop else []))
-    output_checkpoint_file = os.path.join(output_dir, 'model.h5')
-    output_file = os.path.join(output_dir, 'model.json')
-    model.save(output_checkpoint_file)
-    get_model_for_export(output_file, model)
+    get_model_for_export(output_path, model)
 
 def get_weights(model):
     weights = []
@@ -399,7 +396,7 @@ def main():
     training_data,labels=make_training_data(data_dir)
     
 
-    train(training_data,labels,num_units,num_epochs,'MSE','adam', True, output_dir, ckpt)
+    train(training_data,labels,num_units,num_epochs,'MSE','adam', True, output_path, ckpt)
 
 if __name__ == "__main__":
     main()
