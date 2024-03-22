@@ -150,7 +150,7 @@ def create_model(config, model_path = None):
         model = tf.keras.models.load_model(model_path)
         return model
 
-    inputs = tf.keras.layers.Input(shape=(None, sequence_length))
+    inputs = tf.keras.layers.Input(shape=(sequence_length, 1))
     x = tf.keras.layers.LSTM(units = rnn_units, return_sequences=True)(inputs)
     x = tf.keras.layers.LSTM(units = rnn_units)(x)
     x = tf.keras.layers.Dense(n_vocab)(x)
