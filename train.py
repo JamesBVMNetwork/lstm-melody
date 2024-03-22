@@ -132,6 +132,7 @@ def make_training_data(data_dir, sequence_length=20):
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (n_sequences, sequence_length, 1))
     targets = np.array(targets)
+    print(targets.shape)
     return inputs, targets, note_to_int
 
 
@@ -297,8 +298,8 @@ def main():
     )
     print(model.summary())
     print(X.shape)
-    model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
-    get_model_for_export(os.path.join(output_dir, "model.json"), model)
+    # model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
+    # get_model_for_export(os.path.join(output_dir, "model.json"), model)
 
 if __name__ == "__main__":
     main()
