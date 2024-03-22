@@ -128,8 +128,7 @@ def make_training_data(data_dir, config):
         sequence_in = notes[i:i + sequence_length]
         sequence_out = notes[i + sequence_length]
         inputs.append([note_to_int[char] for char in sequence_in])
-        targets.append(note_to_int[sequence_out])
-    print(targets)
+        targets.append([note_to_int[sequence_out]])
     
     dataset = tf.data.Dataset.from_tensor_slices((inputs, targets))
     dataset = dataset.shuffle(buffer_size=len(inputs))
