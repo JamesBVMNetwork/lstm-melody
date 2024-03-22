@@ -118,7 +118,6 @@ def make_training_data(data_dir, sequence_length=20):
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
     note_to_int = dict((note, number) for number, note in enumerate(pitchnames))    
-    print(note_to_int)
 
     inputs = []
     targets = []
@@ -298,6 +297,7 @@ def main():
         verbose=1
     )
     print(model.summary())
+    print(X.shape)
     model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model)
 
