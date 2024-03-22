@@ -166,8 +166,7 @@ def create_model(config, model_path = None):
 
     model.add(tf.keras.layers.Dense(n_vocab))
     model.add(tf.keras.layers.Activation('softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
-    model.summary()   
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='adam')
     return model
 
 
@@ -297,7 +296,6 @@ def main():
         verbose=1
     )
     print(model.summary())
-    print(X.shape)
     model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model)
 
