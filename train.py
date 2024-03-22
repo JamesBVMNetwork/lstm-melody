@@ -155,7 +155,6 @@ def create_model(config, model_path = None):
         tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
-        tf.keras.layers.Dense(n_vocab),
         tf.keras.layers.Dense(n_vocab, activation="softmax")
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam')
@@ -271,8 +270,6 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
     
-    tmp_file = tmp.NamedTemporaryFile()
-
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
@@ -280,11 +277,7 @@ def main():
         vocabulary.append(key)
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=tmp_file,
-        save_weights_only=True,
-        verbose=1
-    )
+
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
     get_model_for_export(output_path, model, vocabulary)
