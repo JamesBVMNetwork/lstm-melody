@@ -119,7 +119,7 @@ def make_training_data(data_dir, config):
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
-    note_to_int = dict((note, number) for number, note in enumerate(pitchnames))    
+    note_to_int = dict((note, float(number)) for number, note in enumerate(pitchnames))    
 
     inputs = []
     targets = []
