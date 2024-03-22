@@ -1,15 +1,11 @@
-from mido import MidiFile
-import mido
-import tensorflow as tf
-from keras.callbacks import ModelCheckpoint
 import os
 from tqdm import *
 
 from music21 import *
-from music21 import converter, instrument, note, chord, stream, midi
+from music21 import converter, instrument, note, chord, stream
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import tensorflow as tf
 import struct
 import base64
 import json
@@ -101,80 +97,107 @@ def noteArrayToStream(note_array):
         melody_stream.append(new_note)
     return melody_stream
 
+def get_notes_from_file(file_path):
+    """ Get all the notes and chords from the midi files in the ./midi_songs directory """
+    notes = []
+
+    for file in glob.glob("midi_songs/*.mid"):
+        midi = converter.parse(file)
+
+        print("Parsing %s" % file)
+
+        notes_to_parse = None
+
+        try: # file has instrument parts
+            s2 = instrument.partitionByInstrument(midi)
+            notes_to_parse = s2.parts[0].recurse() 
+        except: # file has notes in a flat structure
+            notes_to_parse = midi.flat.notes
+
+        for element in notes_to_parse:
+            if isinstance(element, note.Note):
+                notes.append(str(element.pitch))
+
+    return notes
+
 # making data to train
 def make_training_data(data_dir, sequence_length=20):
-    note_on = []
+    notes = []
 
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
     for fold_path in fold_paths:
         file_paths = glob.glob(os.path.join(fold_path, '*'))
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                mid = MidiFile(file_path)
-                for track in mid.tracks:
-                    for event in track:
-                        if not isinstance(event, mido.midifiles.meta.MetaMessage):
-                            if event.type == 'note_on':
-                                note_on.append(event.note)
+                midi = converter.parse(file_path)
+                notes_to_parse = None
+                try: # file has instrument parts
+                    s2 = instrument.partitionByInstrument(midi)
+                    notes_to_parse = s2.parts[0].recurse() 
+                except: # file has notes in a flat structure
+                    notes_to_parse = midi.flat.notes
 
-    training_data = []
-    labels = []
-    for i in range(sequence_length, len(note_on)):
-        inputs = note_on[i - sequence_length:i]
-        # inputs = to_categorical(inputs, num_classes=VOCAB_SIZE)
-        training_data.append(inputs)
-        targets = [note_on[i]]
-        labels.append(targets)
-    training_data = np.array(training_data)
-    training_data = training_data.reshape((training_data.shape[0], training_data.shape[1], 1))
-    labels = np.array(labels)
-    return training_data, labels
+                for element in notes_to_parse:
+                    if isinstance(element, note.Note):
+                        notes.append(str(element.pitch))
+
+    pitchnames = sorted(set(item for item in notes))
+    # create a dictionary to map pitches to integers
+    note_to_int = dict((note, number) for number, note in enumerate(pitchnames))    
+
+    inputs = []
+    targets = []
+    # create input sequences and the corresponding outputs
+    for i in range(0, len(notes) - sequence_length):
+        sequence_in = notes[i:i + sequence_length]
+        sequence_out = notes[i + sequence_length]
+        inputs.append([note_to_int[char] for char in sequence_in])
+        targets.append(note_to_int[sequence_out])
+    
+    n_sequences = len(inputs)
+    # reshape the input into a format compatible with LSTM layers
+    inputs = np.reshape(inputs, (n_sequences, sequence_length, 1))
+    # normalize input
+    inputs = inputs / float(MELODY_SIZE)
+    targets = np.array(targets)
+    return inputs, targets, note_to_int
 
 
-def build_model(rnn_units, sequence_length, model_path = None):
+
+def create_model(config, model_path = None):
+    rnn_units = config["rnn_units"]
+    embedding_dim = config["embedding_dim"]
+    n_vocab = config["n_vocab"]
+    batch_size = config["batch_size"]
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
-    # seuquence length = 
-    input = tf.keras.layers.Input(shape=(sequence_length, 1))
-    x = tf.keras.layers.LSTM(rnn_units, return_sequences=True)(input)
-    x = tf.keras.layers.LSTM(rnn_units)(x)
-    x = tf.keras.layers.Dropout(0.2)(x)
-    output = tf.keras.layers.Dense(MELODY_SIZE, activation="softmax")(x) 
-    model = tf.keras.Model(input, output)
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Embedding(
+        input_dim= MELODY_SIZE,
+        output_dim=embedding_dim,
+        batch_input_shape=[batch_size, None]
+    ))
+    model.add(tf.keras.layers.LSTM(
+        units = rnn_units,
+        return_sequences=True,
+        stateful=True,
+    ))
 
+    model.add(tf.keras.layers.LSTM(
+        units = rnn_units,
+        return_sequences=True,
+        stateful=True,
+    ))
+
+    model.add(tf.keras.layers.Dense(n_vocab))
+    model.add(tf.keras.layers.Activation('softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
     model.summary()   
     return model
 
-def create_model(rnn_units, seq_length, model_path = None):
-
-    model = build_model(rnn_units, seq_length, model_path)
-    # compile model
-    model.compile(loss = "sparse_categorical_crossentropy",
-                  optimizer= tf.keras.optimizers.Adam(learning_rate = 0.001),
-                  metrics=["accuracy"])
-    return model
-
-def split_train_test(data, labels, test_size = 0.2):
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size = test_size, random_state = 42)
-    return X_train, X_test, y_train, y_test
-
-def train(training_data, labels, config, output_dir='./outputs', checkpoint_path=None):
-    num_epochs = config['epoch_num']
-    batch_size = config['batch_size']
-
-    model = create_model(config['rnn_units'], config['seq_length'], checkpoint_path)
-
-    # early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
-    checkpoint_callback = ModelCheckpoint(filepath=os.path.join(output_dir, 'model.h5'), save_best_only=True, monitor="loss", verbose=1)
-    # X_train, y_train, X_test, y_test = split_train_test(training_data, labels)
-    model.fit(training_data, labels, epochs=num_epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
-    output_checkpoint_file = os.path.join(output_dir, 'model.h5')
-    output_file = os.path.join(output_dir, 'model.json')
-    model.save(output_checkpoint_file)
-    get_model_for_export(output_file, model)
 
 def get_weights(model):
     weights = []
@@ -247,7 +270,7 @@ def compressConfig(data):
         }
     }
 
-def get_model_for_export(fname, model):
+def get_model_for_export(output_path, model, vocabulary):
     weight_np = get_weights(model)
 
     weight_bytes = bytearray()
@@ -266,7 +289,7 @@ def get_model_for_export(fname, model):
 
     compressed_config = compressConfig(config)
     # write to file
-    with open(fname, "w") as f:
+    with open(output_path, "w") as f:
         json.dump({
             "model_name": "musicnetgen",
             "layers_config": compressed_config,
@@ -285,9 +308,23 @@ def main():
         config = json.load(f)
 
     sequence_length = config["seq_length"]
-    training_data, labels = make_training_data(data_dir, sequence_length)
+    batch_size = config["batch_size"]
+    epochs = config["epochs"]
 
-    train(training_data, labels, config, output_dir = output_dir, checkpoint_path = ckpt)
+    X, y, note_to_int = make_training_data(data_dir, sequence_length)
+
+    vocabulary = []
+    for key, value in note_to_int.items():
+        vocabulary.append(key)
+    config["n_vocab"] = len(vocabulary)
+    model = create_model(config, ckpt)
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(output_dir, "model.h5"),
+        save_weights_only=True,
+        verbose=1
+    )
+    model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model)
 
 if __name__ == "__main__":
     main()
