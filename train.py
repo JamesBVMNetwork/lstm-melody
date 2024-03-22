@@ -1,6 +1,9 @@
 import os
 from tqdm import *
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 from music21 import *
 from music21 import note, chord, stream
 import numpy as np
