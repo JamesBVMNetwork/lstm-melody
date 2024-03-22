@@ -136,7 +136,7 @@ def make_training_data(data_dir, config):
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
     # normalize input
-    inputs = inputs / float(len(pitchnames))
+    inputs = inputs / float(MELODY_SIZE)
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -157,7 +157,7 @@ def create_model(config, model_path = None):
         tf.keras.layers.Dense(n_vocab),
         tf.keras.layers.Dense(n_vocab, activation="softmax")
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam')
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam')
     return model
 
 
