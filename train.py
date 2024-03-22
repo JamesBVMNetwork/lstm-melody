@@ -280,7 +280,6 @@ def main():
     model = create_model(config, ckpt)
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
-        save_weights_only=True,
         save_best_only=True,
         verbose=1
     )
