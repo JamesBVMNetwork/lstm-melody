@@ -128,8 +128,8 @@ def make_training_data(data_dir, sequence_length=20):
         inputs.append([note_to_int[char] for char in sequence_in])
         targets.append(note_to_int[sequence_out])
     
-    inputs = np.array(inputs, dtype = np.float32)
-    targets = np.array(targets, dtype = np.float32)
+    inputs = np.array(inputs).reshape(len(inputs), sequence_length, 1)
+    targets = np.array(targets)
     return inputs, targets, note_to_int
 
 
