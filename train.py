@@ -135,7 +135,7 @@ def make_training_data(data_dir, config):
     # normalize input
     inputs = inputs / float(len(pitchnames))
     targets = np.array(targets)
-    return inputs, targets
+    return inputs, targets, note_to_index
 
 
 
@@ -279,7 +279,7 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    train_ds, note_to_index = make_training_data(data_dir, config)
+    X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
     for key, value in note_to_index.items():
@@ -292,7 +292,7 @@ def main():
         verbose=1
     )
     model.summary()
-    model.fit(train_ds, epochs=config["epoch_num"], callbacks=[checkpoint_callback])
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
