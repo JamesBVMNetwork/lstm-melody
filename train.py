@@ -155,7 +155,6 @@ def create_model(config, model_path = None):
         tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
-        tf.keras.layers.Dense(n_vocab),
         tf.keras.layers.Dense(n_vocab, activation="softmax")
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam')
@@ -276,7 +275,7 @@ def main():
     vocabulary = []
     for key, value in note_to_index.items():
         vocabulary.append(key)
-        
+
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
