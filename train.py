@@ -280,9 +280,6 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    batch_size = config["batch_size"]
-    epochs = config["epoch_num"]
-
     train_ds, note_to_int = make_training_data(data_dir, config)
 
     vocabulary = []
@@ -295,7 +292,8 @@ def main():
         save_weights_only=True,
         verbose=1
     )
-    model.fit(train_ds, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
+    model.summary()
+    model.fit(train_ds, epochs=config["epoch_num"], callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
