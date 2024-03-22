@@ -150,22 +150,12 @@ def create_model(config, model_path = None):
         model = tf.keras.models.load_model(model_path)
         return model
 
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Embedding(n_vocab, embedding_dim, batch_input_shape=[batch_size, sequence_length]))
-    model.add(tf.keras.layers.LSTM(
-        units = rnn_units,
-        return_sequences=True,
-        stateful=True,
-    ))
-
-    model.add(tf.keras.layers.LSTM(
-        units = rnn_units,
-        return_sequences=True,
-        stateful=True,
-    ))
-
-    model.add(tf.keras.layers.Dense(n_vocab))
-    model.add(tf.keras.layers.Activation('softmax'))
+    inputs = tf.keras.layers.Input(shape=(None, sequence_length))
+    x = tf.keras.layers.LSTM(units = rnn_units, return_sequences=True)(inputs)
+    x = tf.keras.layers.LSTM(units = rnn_units)(x)
+    x = tf.keras.layers.Dense(n_vocab)(x)
+    output = tf.keras.layers.Dense(n_vocab, activation="softmax")(x)
+    model = tf.keras.Model(inputs=inputs, outputs=output)
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam')
     return model
 
