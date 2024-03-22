@@ -120,6 +120,49 @@ def get_notes_from_file(file_path):
 
     return notes
 
+def create_dataset_from_notes(notes, batch_size, seq_length):
+  # The unique characters in the file
+  vocab = sorted(set(notes))
+
+  ids_from_chars = tf.keras.layers.StringLookup(vocabulary=list(vocab), mask_token=None)
+
+  chars_from_ids = tf.keras.layers.StringLookup(
+      vocabulary=ids_from_chars.get_vocabulary(), invert=True, mask_token=None)
+  
+  def text_from_ids(ids):
+    return tf.strings.reduce_join(chars_from_ids(ids), axis=-1)
+
+  all_ids = ids_from_chars(tf.strings.unicode_split(text, 'UTF-8'))
+
+  val_start = int(len(all_ids) * (1 - val_percent/100))
+  train_ids, val_ids = all_ids[:val_start], all_ids[val_start:]
+
+  def get_dataset(all_ids):
+    ids_dataset = tf.data.Dataset.from_tensor_slices(all_ids)
+
+    sequences = ids_dataset.batch(seq_length+1, drop_remainder=True)
+
+    def split_input_target(sequence):
+        input_text = sequence[:-1]
+        target_text = sequence[1:]
+        return input_text, target_text
+
+    dataset = sequences.map(split_input_target)
+
+    # Buffer size to shuffle the dataset
+    # (TF data is designed to work with possibly infinite sequences,
+    # so it doesn't attempt to shuffle the entire sequence in memory. Instead,
+    # it maintains a buffer in which it shuffles elements).
+    BUFFER_SIZE = 10000
+
+    dataset = (
+        dataset
+        .shuffle(BUFFER_SIZE)
+        .batch(batch_size, drop_remainder=True)
+        .prefetch(tf.data.experimental.AUTOTUNE))
+    
+    return dataset
+
 # making data to train
 def make_training_data(data_dir, sequence_length=20):
     notes = []
@@ -159,6 +202,7 @@ def make_training_data(data_dir, sequence_length=20):
     inputs = np.reshape(inputs, (n_sequences, sequence_length, 1))
     # normalize input
     inputs = inputs / float(MELODY_SIZE)
+    print(inputs.shape)
     targets = np.array(targets)
     return inputs, targets, note_to_int
 
