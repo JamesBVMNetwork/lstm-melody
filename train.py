@@ -293,7 +293,8 @@ def main():
         save_weights_only=True,
         verbose=1
     )
-    model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
+    print(X.shape)
+    # model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model)
 
 if __name__ == "__main__":
