@@ -180,8 +180,6 @@ def get_weights(model):
     weights = []
     for layer in model.layers:
         w = layer.get_weights()
-        print(layer.name)
-        print([g.shape for g in w])
         weights.append(w)
     return weights
 
