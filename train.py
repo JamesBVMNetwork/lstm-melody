@@ -125,15 +125,17 @@ def make_training_data(data_dir, config):
     targets = []
     # create input sequences and the corresponding outputs
     for i in range(0, len(notes) - sequence_length):
-        sequence_in = [float(notes[i]) for i in range(i, i + sequence_length)]
+        sequence_in = notes[i:i + sequence_length]
         sequence_out = notes[i + sequence_length]
         inputs.append([note_to_index[char] for char in sequence_in])
         targets.append([note_to_index[sequence_out]])
     
-    dataset = tf.data.Dataset.from_tensor_slices((inputs, targets))
-    dataset = dataset.shuffle(buffer_size=len(inputs))
-    dataset = dataset.batch(batch_size)
-    return dataset, note_to_index
+    # reshape the input into a format compatible with LSTM layers
+    inputs = np.reshape(inputs, (len(inputs), sequence_length))
+    # normalize input
+    inputs = inputs / float(len(pitchnames))
+    targets = np.array(targets)
+    return inputs, targets
 
 
 
@@ -142,18 +144,15 @@ def create_model(config, model_path = None):
     embedding_dim = config["embedding_dim"]
     n_vocab = config["n_vocab"]
     batch_size = config["batch_size"]
+    sequence_length = config["seq_length"]
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
     model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Embedding(
-        input_dim= MELODY_SIZE,
-        output_dim=embedding_dim,
-        batch_input_shape=[batch_size, None]
-    ))
     model.add(tf.keras.layers.LSTM(
+        input_shape=(sequence_length, 1),
         units = rnn_units,
         return_sequences=True,
         stateful=True,
