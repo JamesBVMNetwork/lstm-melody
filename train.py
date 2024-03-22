@@ -279,7 +279,7 @@ def main():
     model = create_model(config, ckpt)
 
     model.summary()
-    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
     get_model_for_export(output_path, model, vocabulary)
 
 if __name__ == "__main__":
