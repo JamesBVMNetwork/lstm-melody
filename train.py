@@ -157,8 +157,6 @@ def make_training_data(data_dir, sequence_length=20):
     n_sequences = len(inputs)
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (n_sequences, sequence_length, 1))
-    # normalize input
-    inputs = inputs / float(MELODY_SIZE)
     targets = np.array(targets)
     return inputs, targets, note_to_int
 
