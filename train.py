@@ -115,7 +115,7 @@ def make_training_data(data_dir, config):
                 mid = MidiFile(file_path)
                 for j in range(len(mid.tracks)):
                     for i in mid.tracks[j]:
-                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>":
+                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
                             x = str(i).split(' ')
                             if x[0] == 'note_on':
                                 notes.append(int(x[2].split('=')[1]))
