@@ -119,21 +119,21 @@ def make_training_data(data_dir, config):
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
-    note_to_int = dict((note, float(number)) for number, note in enumerate(pitchnames))    
+    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))    
 
     inputs = []
     targets = []
     # create input sequences and the corresponding outputs
     for i in range(0, len(notes) - sequence_length):
-        sequence_in = notes[i:i + sequence_length]
+        sequence_in = float(notes[i:i + sequence_length])
         sequence_out = notes[i + sequence_length]
-        inputs.append([note_to_int[char] for char in sequence_in])
-        targets.append([note_to_int[sequence_out]])
+        inputs.append([note_to_index[char] for char in sequence_in])
+        targets.append([note_to_index[sequence_out]])
     
     dataset = tf.data.Dataset.from_tensor_slices((inputs, targets))
     dataset = dataset.shuffle(buffer_size=len(inputs))
     dataset = dataset.batch(batch_size)
-    return dataset, note_to_int
+    return dataset, note_to_index
 
 
 
@@ -280,10 +280,10 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    train_ds, note_to_int = make_training_data(data_dir, config)
+    train_ds, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
-    for key, value in note_to_int.items():
+    for key, value in note_to_index.items():
         vocabulary.append(key)
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
@@ -293,8 +293,8 @@ def main():
         verbose=1
     )
     model.summary()
-    # model.fit(train_ds, epochs=config["epoch_num"], callbacks=[checkpoint_callback])
-    # get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
+    model.fit(train_ds, epochs=config["epoch_num"], callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()
