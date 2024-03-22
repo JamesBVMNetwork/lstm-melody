@@ -1,30 +1,19 @@
-from mido import MidiFile, MidiTrack, Message
-import mido
-import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import LSTM
-from keras.layers import Embedding
-from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.utils import np_utils, to_categorical
-from keras.models import load_model
 import os
 from tqdm import *
 
-import pygame
-# import IPython
-import matplotlib.pyplot as plt
-# import librosa.display
-# from IPython import *
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
 from music21 import *
-from music21 import converter, instrument, note, chord, stream, midi
+from music21 import note, chord, stream
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import tensorflow as tf
 import struct
 import base64
 import json
+import glob
+from mido import MidiFile
 import tempfile as tmp
 import argparse
 
@@ -35,12 +24,12 @@ MELODY_NOTE_OFF = 128  # (stop playing all previous notes)
 MELODY_NO_EVENT = 129  # (no change from previous event)
 # Each element in the sequence lasts for one sixteenth note.
 # This can encode monophonic music only.
-VOCAB_SIZE = 130
+MELODY_SIZE = 130
 
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-path", type=str, default = "./outputs", help="Path to the output file")
+    parser.add_argument("--output-path", type=str, default = "model.json", help="Path to the output file")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
@@ -114,89 +103,69 @@ def noteArrayToStream(note_array):
     return melody_stream
 
 # making data to train
-def make_training_data(dirname):
-    note_on = []
-    for currentpath,_, files in os.walk(dirname):
-        for file in files:
-            path = os.path.join(currentpath, file)
-            if path.endswith('.mid') or path.endswith('.midi'):
-                mid = MidiFile(path)
+def make_training_data(data_dir, config):
+    notes = []
+    sequence_length = config["seq_length"]
+
+    fold_paths = glob.glob(os.path.join(data_dir, '*'))
+    for fold_path in fold_paths:
+        file_paths = glob.glob(os.path.join(fold_path, '*'))
+        for file_path in file_paths:
+            if file_path.endswith('.mid') or file_path.endswith('.midi'):
+                mid = MidiFile(file_path)
                 for j in range(len(mid.tracks)):
                     for i in mid.tracks[j]:
-                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>":
+                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
                             x = str(i).split(' ')
                             if x[0] == 'note_on':
-                                note_on.append(int(x[2].split('=')[1]))
+                                notes.append(int(x[2].split('=')[1]))
 
-    # making data to train
-    training_data = []
-    labels = []
-    for i in range(20, len(note_on)):
-        inputs = note_on[i-20:i]
-        # inputs = to_categorical(inputs, num_classes=VOCAB_SIZE)
-        training_data.append(inputs)
-        targets = [note_on[i]]
-        targets = to_categorical(targets, num_classes=VOCAB_SIZE)
-        labels.append(targets)
+    pitchnames = sorted(set(item for item in notes))
+    # create a dictionary to map pitches to integers
+    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))    
 
-    return training_data,labels
+    inputs = []
+    targets = []
+    # create input sequences and the corresponding outputs
+    for i in range(0, len(notes) - sequence_length):
+        sequence_in = notes[i:i + sequence_length]
+        sequence_out = notes[i + sequence_length]
+        inputs.append([note_to_index[char] for char in sequence_in])
+        targets.append([note_to_index[sequence_out]])
+    
+    # reshape the input into a format compatible with LSTM layers
+    inputs = np.reshape(inputs, (len(inputs), sequence_length))
+    # normalize input
+    inputs = inputs / float(MELODY_SIZE)
+    targets = np.array(targets)
+    return inputs, targets, note_to_index
 
-def create_model(rnn_units, model_path = None):
+
+
+def create_model(config, model_path = None):
+    rnn_units = config["rnn_units"]
+    n_vocab = config["n_vocab"]
+    sequence_length = config["seq_length"]
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
-    model = tf.keras.models.Sequential()
-    
-    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
-                return_sequences=True, implementation=1))
-    
-    model.add(LSTM(rnn_units, input_shape=(20, 1), unroll=True,
-                return_sequences=True, implementation=1))
-    
-    model.add(Dropout(0.2))
-    model.add(Dense(130, 'softmax'))
-    model.compile(loss='MSE', optimizer='adam')
+    model = tf.keras.Sequential([
+        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
+        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
+        tf.keras.layers.LSTM(units = rnn_units),
+        tf.keras.layers.Dense(n_vocab),
+        tf.keras.layers.Dense(n_vocab, activation="softmax")
+    ])
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam')
     return model
 
-def train(training_data, labels, config, output_path = './model.json', checkpoint_path = None):
-    num_units = config['rnn_units']
-    num_epochs = config['epoch_num']
-    batch_size = config['batch_size']
-    
-    early_stop = True
-
-    model = create_model(num_units, checkpoint_path)
-
-    early_stop_cb = EarlyStopping(monitor='val_loss', patience=20)
-    
-    tmp_file = tmp.NamedTemporaryFile()
-    checkpoint_callback = ModelCheckpoint(
-        filepath=tmp_file, 
-        save_best_only=True, 
-        monitor = "loss"    
-    )
-
-    training_data = np.array(training_data)
-    training_data = training_data.reshape(
-        (training_data.shape[0], training_data.shape[1], 1))
-    labels = np.array(labels)
-
-    # train
-    X_train, X_test, y_train, y_test = train_test_split(
-        training_data, labels, test_size=0.05, random_state=42)
-    model.fit(X_train, y_train, epochs=num_epochs, batch_size=batch_size,
-              validation_data=(X_test, y_test), callbacks=[checkpoint_callback, early_stop_cb])
-
-    get_model_for_export(output_path, model)
 
 def get_weights(model):
     weights = []
     for layer in model.layers:
         w = layer.get_weights()
-        print(layer.name)
-        print([g.shape for g in w])
         weights.append(w)
     return weights
 
@@ -264,7 +233,7 @@ def compressConfig(data):
         }
     }
 
-def get_model_for_export(fname, model):
+def get_model_for_export(output_path, model, vocabulary):
     weight_np = get_weights(model)
 
     weight_bytes = bytearray()
@@ -283,11 +252,12 @@ def get_model_for_export(fname, model):
 
     compressed_config = compressConfig(config)
     # write to file
-    with open(fname, "w") as f:
+    with open(output_path, "w") as f:
         json.dump({
             "model_name": "musicnetgen",
             "layers_config": compressed_config,
             "weight_b64": weight_base64,
+            "vocabulary": vocabulary
         }, f)
     return weight_base64, compressed_config
 
@@ -298,15 +268,26 @@ def main():
     output_path = args.output_path
     ckpt = args.checkpoint_path
     config_path = args.config_path
-
     with open(config_path, 'r') as f:
         config = json.load(f)
-
-    training_data,labels=None,None
-    training_data,labels=make_training_data(data_dir)
     
+    tmp_file = tmp.NamedTemporaryFile()
 
-    train(training_data, labels, config, output_path = output_path, checkpoint_path = ckpt)
+    X, y, note_to_index = make_training_data(data_dir, config)
+
+    vocabulary = []
+    for key, value in note_to_index.items():
+        vocabulary.append(key)
+    config["n_vocab"] = len(vocabulary)
+    model = create_model(config, ckpt)
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=tmp_file,
+        save_weights_only=True,
+        verbose=1
+    )
+    model.summary()
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    get_model_for_export(output_path, model, vocabulary)
 
 if __name__ == "__main__":
     main()
