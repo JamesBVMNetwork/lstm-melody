@@ -154,6 +154,7 @@ def create_model(config, model_path = None):
         tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
+        tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(n_vocab, activation="softmax")
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam', metrics=['accuracy'])
