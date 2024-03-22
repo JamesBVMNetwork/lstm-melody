@@ -276,11 +276,13 @@ def main():
     vocabulary = []
     for key, value in note_to_index.items():
         vocabulary.append(key)
+        
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
         save_weights_only=True,
+        save_best_only=True,
         verbose=1
     )
     model.summary()
