@@ -141,21 +141,19 @@ def make_training_data(data_dir, config):
 
 def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
-    embedding_dim = config["embedding_dim"]
     n_vocab = config["n_vocab"]
-    batch_size = config["batch_size"]
     sequence_length = config["seq_length"]
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
         return model
 
-    inputs = tf.keras.layers.Input(shape=(sequence_length, 1))
-    x = tf.keras.layers.LSTM(units = rnn_units, return_sequences=True)(inputs)
-    x = tf.keras.layers.LSTM(units = rnn_units)(x)
-    x = tf.keras.layers.Dense(n_vocab)(x)
-    output = tf.keras.layers.Dense(n_vocab, activation="softmax")(x)
-    model = tf.keras.Model(inputs=inputs, outputs=output)
+    model = tf.keras.Sequential([
+        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
+        tf.keras.layers.LSTM(units = rnn_units),
+        tf.keras.layers.Dense(n_vocab),
+        tf.keras.layers.Dense(n_vocab, activation="softmax")
+    ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam')
     return model
 
