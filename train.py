@@ -125,7 +125,7 @@ def make_training_data(data_dir, config):
     targets = []
     # create input sequences and the corresponding outputs
     for i in range(0, len(notes) - sequence_length):
-        sequence_in = float(notes[i:i + sequence_length])
+        sequence_in = [float(notes[i]) for i in range(i, i + sequence_length)]
         sequence_out = notes[i + sequence_length]
         inputs.append([note_to_index[char] for char in sequence_in])
         targets.append([note_to_index[sequence_out]])
