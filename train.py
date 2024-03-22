@@ -309,7 +309,7 @@ def main():
 
     sequence_length = config["seq_length"]
     batch_size = config["batch_size"]
-    epochs = config["epochs"]
+    epochs = config["epoch_num"]
 
     X, y, note_to_int = make_training_data(data_dir, sequence_length)
 
