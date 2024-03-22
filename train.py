@@ -150,9 +150,8 @@ def create_model(config, model_path = None):
         model = tf.keras.models.load_model(model_path)
         return model
 
-    model = tf.keras.Sequential()
+    model = tf.keras.Sequential(tf.keras.layers.Input(shape=(None, sequence_length)))
     model.add(tf.keras.layers.LSTM(
-        input_shape=(sequence_length, 1),
         units = rnn_units,
         return_sequences=True,
         stateful=True,
