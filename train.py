@@ -129,6 +129,7 @@ def make_training_data(data_dir, config):
         sequence_out = notes[i + sequence_length]
         inputs.append([note_to_int[char] for char in sequence_in])
         targets.append(note_to_int[sequence_out])
+    print(targets)
     
     dataset = tf.data.Dataset.from_tensor_slices((inputs, targets))
     dataset = dataset.shuffle(buffer_size=len(inputs))
@@ -293,8 +294,8 @@ def main():
         verbose=1
     )
     model.summary()
-    model.fit(train_ds, epochs=config["epoch_num"], callbacks=[checkpoint_callback])
-    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
+    # model.fit(train_ds, epochs=config["epoch_num"], callbacks=[checkpoint_callback])
+    # get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()
