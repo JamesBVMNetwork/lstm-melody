@@ -2,7 +2,7 @@ import os
 from tqdm import *
 
 from music21 import *
-from music21 import converter, instrument, note, chord, stream
+from music21 import note, chord, stream
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -10,6 +10,7 @@ import struct
 import base64
 import json
 import glob
+from mido import MidiFile
 import argparse
 
 
@@ -97,29 +98,6 @@ def noteArrayToStream(note_array):
         melody_stream.append(new_note)
     return melody_stream
 
-def get_notes_from_file(file_path):
-    """ Get all the notes and chords from the midi files in the ./midi_songs directory """
-    notes = []
-
-    for file in glob.glob("midi_songs/*.mid"):
-        midi = converter.parse(file)
-
-        print("Parsing %s" % file)
-
-        notes_to_parse = None
-
-        try: # file has instrument parts
-            s2 = instrument.partitionByInstrument(midi)
-            notes_to_parse = s2.parts[0].recurse() 
-        except: # file has notes in a flat structure
-            notes_to_parse = midi.flat.notes
-
-        for element in notes_to_parse:
-            if isinstance(element, note.Note):
-                notes.append(str(element.pitch))
-
-    return notes
-
 # making data to train
 def make_training_data(data_dir, sequence_length=20):
     notes = []
@@ -129,17 +107,13 @@ def make_training_data(data_dir, sequence_length=20):
         file_paths = glob.glob(os.path.join(fold_path, '*'))
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                midi = converter.parse(file_path)
-                notes_to_parse = None
-                try: # file has instrument parts
-                    s2 = instrument.partitionByInstrument(midi)
-                    notes_to_parse = s2.parts[0].recurse() 
-                except: # file has notes in a flat structure
-                    notes_to_parse = midi.flat.notes
-
-                for element in notes_to_parse:
-                    if isinstance(element, note.Note):
-                        notes.append(str(element.pitch))
+                mid = MidiFile(file_path)
+                for j in range(len(mid.tracks)):
+                    for i in mid.tracks[j]:
+                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>":
+                            x = str(i).split(' ')
+                            if x[0] == 'note_on':
+                                notes.append(int(x[2].split('=')[1]))
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
