@@ -99,8 +99,10 @@ def noteArrayToStream(note_array):
     return melody_stream
 
 # making data to train
-def make_training_data(data_dir, sequence_length=20):
+def make_training_data(data_dir, config):
     notes = []
+    sequence_length = config["seq_length"]
+    batch_size = config["batch_size"]
 
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
     for fold_path in fold_paths:
@@ -128,9 +130,10 @@ def make_training_data(data_dir, sequence_length=20):
         inputs.append([note_to_int[char] for char in sequence_in])
         targets.append(note_to_int[sequence_out])
     
-    inputs = np.array(inputs).reshape(len(inputs), sequence_length, 1)
-    targets = np.array(targets)
-    return inputs, targets, note_to_int
+    dataset = tf.data.Dataset.from_tensor_slices((inputs, targets))
+    dataset = dataset.shuffle(buffer_size=len(inputs))
+    dataset = dataset.batch(batch_size)
+    return dataset, note_to_int
 
 
 
@@ -281,7 +284,7 @@ def main():
     batch_size = config["batch_size"]
     epochs = config["epoch_num"]
 
-    X, y, note_to_int = make_training_data(data_dir, sequence_length)
+    train_ds, note_to_int = make_training_data(data_dir, sequence_length)
 
     vocabulary = []
     for key, value in note_to_int.items():
@@ -293,9 +296,8 @@ def main():
         save_weights_only=True,
         verbose=1
     )
-    print(X.shape)
-    # model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
-    get_model_for_export(os.path.join(output_dir, "model.json"), model)
+    model.fit(train_ds, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()
