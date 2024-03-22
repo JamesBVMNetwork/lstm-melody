@@ -280,11 +280,10 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    sequence_length = config["seq_length"]
     batch_size = config["batch_size"]
     epochs = config["epoch_num"]
 
-    train_ds, note_to_int = make_training_data(data_dir, sequence_length)
+    train_ds, note_to_int = make_training_data(data_dir, config)
 
     vocabulary = []
     for key, value in note_to_int.items():
