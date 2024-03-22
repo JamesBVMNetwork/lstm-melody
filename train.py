@@ -105,8 +105,7 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    batch_size = config["batch_size"]
-
+    
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
     for fold_path in fold_paths:
         file_paths = glob.glob(os.path.join(fold_path, '*'))
@@ -157,7 +156,7 @@ def create_model(config, model_path = None):
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab, activation="softmax")
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam')
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam', metrics=['accuracy'])
     return model
 
 
@@ -280,6 +279,7 @@ def main():
     model = create_model(config, ckpt)
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
+        monitor = "loss",
         save_best_only=True,
         verbose=1
     )
