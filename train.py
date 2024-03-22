@@ -144,6 +144,7 @@ def make_training_data(data_dir, sequence_length=20):
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
     note_to_int = dict((note, number) for number, note in enumerate(pitchnames))    
+    print(note_to_int)
 
     inputs = []
     targets = []
@@ -292,6 +293,7 @@ def get_model_for_export(output_path, model, vocabulary):
             "model_name": "musicnetgen",
             "layers_config": compressed_config,
             "weight_b64": weight_base64,
+            "vocabulary": vocabulary
         }, f)
     return weight_base64, compressed_config
 
@@ -321,6 +323,7 @@ def main():
         save_weights_only=True,
         verbose=1
     )
+    print(model.summary())
     model.fit(X, y, epochs=epochs, batch_size=batch_size, callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model)
 
