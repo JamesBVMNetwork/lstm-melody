@@ -167,7 +167,7 @@ def create_model(config, model_path = None):
 
     model.add(tf.keras.layers.Dense(n_vocab))
     model.add(tf.keras.layers.Activation('softmax'))
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='adam')
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam')
     return model
 
 
