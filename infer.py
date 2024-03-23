@@ -31,12 +31,11 @@ def load_model_from_ckpt(ckpt):
 def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_generate = 10):
     input_notes = input_notes[-seq_length: ]
     for i in range(seq_length - len(input_notes)):
-        input_notes.insert(0, 0)
+        input_notes.insert(0, np.random.choice(vocab))
     prediction_output = []
     for i in range(to_generate):
         prediction_input = np.array(input_notes).reshape(1, seq_length, 1)
         prediction = model.predict(prediction_input)
-        print(prediction)
 
         predicted_ids = tf.random.categorical(prediction, num_samples=1)
         prediction = tf.squeeze(predicted_ids, axis=-1)
