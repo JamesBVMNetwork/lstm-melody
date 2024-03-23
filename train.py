@@ -111,7 +111,7 @@ def make_training_data(data_dir, config):
     for currentpath, folders, files in os.walk(data_dir):    
             for file_path in files:
                 if file_path.endswith('.mid'):
-                    s = converter.parse(file_path)
+                    s = converter.parse(os.path.join(currentpath, file_path))
                     arr = streamToNoteArray(s.parts[0])
                     for item in arr:
                         notes.append(item)
