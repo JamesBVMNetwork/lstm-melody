@@ -27,7 +27,7 @@ def load_model_from_ckpt(ckpt):
 
 
 
-def generate_melody(input_notes, model, seq_length = SEQUENCE_LENGTH, to_generate = 100):
+def generate_melody(input_notes, model, seq_length = SEQUENCE_LENGTH, to_generate = 10):
     input_notes = input_notes[-seq_length: ]
     if len(input_notes) < seq_length:
         input_notes = [MELODY_NO_EVENT for _ in range(seq_length - len(input_notes))] + input_notes
@@ -66,6 +66,6 @@ if __name__ == '__main__':
     checkpoint_path = args.checkpoint_path
     model = load_model_from_ckpt(checkpoint_path)
     model.summary()
-    input_notes = [68]
+    input_notes = [np.random.randint(0, MELODY_SIZE) for _ in range(10)]
     melody = generate_melody(input_notes, model)
     create_midi(melody, output_file='test_output.mid')
