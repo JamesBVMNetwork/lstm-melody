@@ -13,7 +13,7 @@ import json
 import glob
 import time
 import argparse
-from music21 import converter, instrument, note, chord, stream, midi
+from music21 import converter, note, chord, stream
 
 
 
@@ -109,19 +109,17 @@ def make_training_data(data_dir, config):
     
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
     for fold_path in fold_paths:
-        file_paths = glob.glob(os.path.join(fold_path, '*'))
-        for file_path in file_paths:
-            if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                start = time.perf_counter()
-                s = converter.parse(file_path)
-                arr = streamToNoteArray(s.parts[0])
-                notes.append(arr)
-                print(arr)
-                print("Converted:", file_path, "it took", time.perf_counter() - start)
-                   
-    return notes
+        sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
+        for sub_fold_path in sub_fold_paths:
+            file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
+            for file_path in file_paths:
+                if file_path.endswith('.mid') or file_path.endswith('.midi'):
+                    s = converter.parse(file_path)
+                    arr = streamToNoteArray(s.parts[0])
+                    for item in arr:
+                        notes.append(item)
+
     pitchnames = sorted(set(item for item in notes))
-    print(pitchnames)
     # create a dictionary to map pitches to integers
     note_to_index = dict((note, number) for number, note in enumerate(pitchnames))   
 
