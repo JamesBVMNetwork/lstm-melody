@@ -1,7 +1,9 @@
 import numpy as np
 import argparse
 import tensorflow as tf
-from music21 import instrument, note, stream, chord
+import os
+import json
+from music21 import instrument, note, stream
 
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:
@@ -16,8 +18,7 @@ SEQUENCE_LENGTH = 40
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate music using a trained model')
-    parser.add_argument('--checkpoint-path', type=str, required=True,
-                        help='Path to the checkpoint file')
+    parser.add_argument('--model-dir', type=str, default='model', help='Directory to load model')
     parser.add_argument('--output-dir', type=str, default='output', help='Directory to save output')
     return parser.parse_args()
 
@@ -27,7 +28,7 @@ def load_model_from_ckpt(ckpt):
 
 
 
-def generate_melody(input_notes, model, seq_length = SEQUENCE_LENGTH, to_generate = 10):
+def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_generate = 10):
     input_notes = input_notes[-seq_length: ]
     if len(input_notes) < seq_length:
         input_notes = [MELODY_NO_EVENT for _ in range(seq_length - len(input_notes))] + input_notes
@@ -35,13 +36,9 @@ def generate_melody(input_notes, model, seq_length = SEQUENCE_LENGTH, to_generat
     for i in range(to_generate):
         prediction_input = np.array(input_notes).reshape(1, seq_length)
         prediction = model.predict(prediction_input)
-        print(prediction.shape)
-        print(sum(prediction[0]))
         prediction = np.argmax(prediction, axis=1)
-        prediction_output.append(prediction[0])
+        prediction_output.append(vocab[prediction[0]])
         input_notes = input_notes[1:] + [prediction[0]]
-
-    print(prediction_output)
 
     return prediction_output
     
@@ -67,9 +64,13 @@ def create_midi(prediction_output, output_file='test_output.mid'):
 if __name__ == '__main__':
     args = parse_args()
     output_dir = args.output_dir
-    checkpoint_path = args.checkpoint_path
+    model_dir = args.model_dir
+    checkpoint_path = os.path.join(model_dir, 'model.h5')
+    model_config_path = os.path.join(model_dir, 'model.json')
     model = load_model_from_ckpt(checkpoint_path)
     model.summary()
+    with open(model_config_path, 'r') as f:
+        vocab = json.load(model_config_path)
     input_notes = [np.random.randint(0, MELODY_SIZE) for _ in range(10)]
-    melody = generate_melody(input_notes, model)
+    melody = generate_melody(input_notes, vocab, model)
     create_midi(melody, output_file='test_output.mid')
