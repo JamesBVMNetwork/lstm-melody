@@ -34,9 +34,8 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
         input_notes.insert(0, np.random.randint(0, MELODY_SIZE))
     prediction_output = []
     for i in range(to_generate):
-        prediction_input = np.array(input_notes).reshape(1, seq_length, 1)
+        prediction_input = np.array(input_notes).reshape(1, seq_length)
         prediction = model.predict(prediction_input)
-        print(prediction)
 
         predicted_ids = tf.random.categorical(prediction, num_samples=1)
         prediction = tf.squeeze(predicted_ids, axis=-1)
