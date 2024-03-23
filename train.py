@@ -116,7 +116,9 @@ def make_training_data(data_dir, config):
                     for i in mid.tracks[j]:
                         if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
                             x = str(i).split(' ')
-                            if x[0] == 'note_on':
+                            if x[0] == 'note_on' or x[0] == 'note_off':
+                                if x[0] == 'note_off':
+                                    print(x[0])
                                 notes.append(int(x[2].split('=')[1]))
 
     pitchnames = sorted(set(item for item in notes))

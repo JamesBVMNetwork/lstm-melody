@@ -2,5 +2,5 @@
     "rnn_units": 128,
     "batch_size": 1024,
     "epoch_num": 1000,
-    "seq_length": 20
+    "seq_length": 100
 }
