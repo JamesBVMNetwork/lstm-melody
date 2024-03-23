@@ -4,8 +4,7 @@ from tqdm import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-from music21 import *
-from music21 import note, chord, stream
+from music21 import converter, instrument, note, chord, stream, midi
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -104,7 +103,7 @@ def noteArrayToStream(note_array):
 
 # making data to train
 def make_training_data(data_dir, config):
-    notes = []
+    training_arrays = []
     sequence_length = config["seq_length"]
     
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
@@ -112,16 +111,17 @@ def make_training_data(data_dir, config):
         file_paths = glob.glob(os.path.join(fold_path, '*'))
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                mid = MidiFile(file_path)
-                for track in mid.tracks:
-                    for event in track:
-                        if isinstance(event, (mido.Message, mido.MetaMessage)):
-                            if event.type == 'note_on' or event.type == 'note_off':
-                                if event.type == 'note_off':
-                                    print("AAAAAAAAAA", event.type)
-                                elif event.type == 'note_no_event':
-                                    print("BBBBBBBBBB", event.type)
-                                notes.append(event.note)
+                try:        
+                    s = converter.parse(file_path)    
+                except:        
+                    continue
+                arr = streamToNoteArray(s.parts[0]) # just extract first voice
+                training_arrays.append(arr)
+
+    training_dataset = np.array(training_arrays)
+    print(training_dataset[0])
+
+    return training_dataset
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
