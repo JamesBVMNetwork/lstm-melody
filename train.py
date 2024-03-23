@@ -288,7 +288,8 @@ def main():
         filepath=os.path.join(output_dir, "model.h5"),
         save_best_only=True,
         monitor="loss",
-        mode="min"
+        mode="min",
+        verbose = 1,
     )
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
