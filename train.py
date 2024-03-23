@@ -4,8 +4,6 @@ from tqdm import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-from music21 import *
-from music21 import note, chord, stream
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -13,9 +11,10 @@ import struct
 import base64
 import json
 import glob
-from mido import MidiFile
-import tempfile as tmp
+import time
 import argparse
+from music21 import converter, note, chord, stream
+
 
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:
@@ -29,10 +28,17 @@ MELODY_SIZE = 130
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-path", type=str, default = "model.json", help="Path to the output file")
+    parser.add_argument("--output-dir", type=str, default = "./outputs", help = "Path to output directory")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
+
+# Melody-RNN Format is a sequence of 8-bit integers indicating the following:
+# MELODY_NOTE_ON = [0, 127] # (note on at that MIDI pitch)
+MELODY_NOTE_OFF = 128 # (stop playing all previous notes)
+MELODY_NO_EVENT = 129 # (no change from previous event)
+# Each element in the sequence lasts for one sixteenth note.
+# This can encode monophonic music only.
 
 def streamToNoteArray(stream):
     """
@@ -42,34 +48,27 @@ def streamToNoteArray(stream):
         129   - no event
     """
     # Part one, extract from stream
-    total_length = np.int(
-        np.round(stream.flat.highestTime / 0.25))  # in semiquavers
+    total_length = int(np.round(stream.flatten().highestTime / 0.25)) # in semiquavers
     stream_list = []
-    for element in stream.flat:
+    for element in stream.flatten():
         if isinstance(element, note.Note):
-            stream_list.append([np.round(
-                element.offset / 0.25), np.round(element.quarterLength / 0.25), element.pitch.midi])
+            stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.pitch.midi])
         elif isinstance(element, chord.Chord):
-            stream_list.append([np.round(element.offset / 0.25), np.round(
-                element.quarterLength / 0.25), element.sortAscending().pitches[-1].midi])
-    np_stream_list = np.array(stream_list, dtype=np.int)
-    df = pd.DataFrame(
-        {'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
-    # sort the dataframe properly
-    df = df.sort_values(['pos', 'pitch'], ascending=[True, False])
-    df = df.drop_duplicates(subset=['pos'])  # drop duplicate values
+            stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.sortAscending().pitches[-1].midi])
+    np_stream_list = np.array(stream_list, dtype=int)
+    df = pd.DataFrame({'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
+    df = df.sort_values(['pos','pitch'], ascending=[True, False]) # sort the dataframe properly
+    df = df.drop_duplicates(subset=['pos']) # drop duplicate values
     # part 2, convert into a sequence of note events
-    # set array full of no events by default.
-    output = np.zeros(total_length+1, dtype=np.int16) + \
-        np.int16(MELODY_NO_EVENT)
+    output = np.zeros(total_length+1, dtype=np.int16) + np.int16(MELODY_NO_EVENT)  # set array full of no events by default.
     # Fill in the output list
     for i in range(total_length):
-        if not df[df.pos == i].empty:
-            # pick the highest pitch at each semiquaver
-            n = df[df.pos == i].iloc[0]
-            output[i] = n.pitch  # set note on
+        if not df[df.pos==i].empty:
+            n = df[df.pos==i].iloc[0] # pick the highest pitch at each semiquaver
+            output[i] = n.pitch # set note on
             output[i+n.dur] = MELODY_NOTE_OFF
     return output
+
 
 def noteArrayToDataFrame(note_array):
     """
@@ -79,10 +78,10 @@ def noteArrayToDataFrame(note_array):
     df['offset'] = df.index
     df['duration'] = df.index
     df = df[df.code != MELODY_NO_EVENT]
-    # calculate durations and change to quarter note fractions
-    df.duration = df.duration.diff(-1) * -1 * 0.25
+    df.duration = df.duration.diff(-1) * -1 * 0.25  # calculate durations and change to quarter note fractions
     df = df.fillna(0.25)
-    return df[['code', 'duration']]
+    return df[['code','duration']]
+
 
 def noteArrayToStream(note_array):
     """
@@ -92,8 +91,7 @@ def noteArrayToStream(note_array):
     melody_stream = stream.Stream()
     for index, row in df.iterrows():
         if row.code == MELODY_NO_EVENT:
-            # bit of an oversimplification, doesn't produce long notes.
-            new_note = note.Rest()
+            new_note = note.Rest() # bit of an oversimplification, doesn't produce long notes.
         elif row.code == MELODY_NOTE_OFF:
             new_note = note.Rest()
         else:
@@ -102,29 +100,28 @@ def noteArrayToStream(note_array):
         melody_stream.append(new_note)
     return melody_stream
 
+
+
 # making data to train
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-
+    
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
     for fold_path in fold_paths:
         sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
         for sub_fold_path in sub_fold_paths:
             file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
             for file_path in file_paths:
-                if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                    mid = MidiFile(file_path)
-                    for j in range(len(mid.tracks)):
-                        for i in mid.tracks[j]:
-                            if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
-                                x = str(i).split(' ')
-                                if x[0] == 'note_on':
-                                    notes.append(int(x[2].split('=')[1]))
+                if file_path.endswith('.mid'):
+                    s = converter.parse(file_path)
+                    arr = streamToNoteArray(s.parts[0])
+                    for item in arr:
+                        notes.append(item)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
-    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))    
+    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))   
 
     inputs = []
     targets = []
@@ -157,9 +154,10 @@ def create_model(config, model_path = None):
         tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
+        tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(n_vocab, activation="softmax")
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam')
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam', metrics=['accuracy'])
     return model
 
 
@@ -266,23 +264,29 @@ def main():
     args = parse_args()
 
     data_dir = args.data_dir
-    output_path = args.output_path
+    output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
     with open(config_path, 'r') as f:
         config = json.load(f)
-    
+
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
     for key, value in note_to_index.items():
         vocabulary.append(key)
+
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
-
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(output_dir, "model.h5"),
+        monitor = "loss",
+        save_best_only=True,
+        verbose=1
+    )
     model.summary()
-    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
-    get_model_for_export(output_path, model, vocabulary)
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()
