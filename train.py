@@ -4,7 +4,8 @@ from tqdm import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-from music21 import converter, instrument, note, chord, stream, midi
+from music21 import *
+from music21 import note, chord, stream
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -12,7 +13,6 @@ import struct
 import base64
 import json
 import glob
-import mido
 from mido import MidiFile
 import argparse
 
@@ -103,7 +103,7 @@ def noteArrayToStream(note_array):
 
 # making data to train
 def make_training_data(data_dir, config):
-    training_arrays = []
+    notes = []
     sequence_length = config["seq_length"]
     
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
@@ -111,21 +111,19 @@ def make_training_data(data_dir, config):
         file_paths = glob.glob(os.path.join(fold_path, '*'))
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                try:        
-                    s = converter.parse(file_path)    
-                except:        
-                    continue
-                arr = streamToNoteArray(s.parts[0]) # just extract first voice
-                training_arrays.append(arr)
-
-    training_dataset = np.array(training_arrays)
-    print(training_dataset[0])
-
-    return training_dataset
+                midi_file = MidiFile(file_path)
+                for track in midi_file.tracks:
+                    for event in track.events:
+                        if event.type == "note":
+                            notes.append(event.data[1])  # Assuming note number is at index 1
+                        else:
+                            break  # Stop reading once we reach MELODY_SIZE notes
+                            
 
     pitchnames = sorted(set(item for item in notes))
+    print(pitchnames)
     # create a dictionary to map pitches to integers
-    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))    
+    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))   
 
     inputs = []
     targets = []
