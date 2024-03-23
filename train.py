@@ -113,7 +113,7 @@ def make_training_data(data_dir, config):
         for sub_fold_path in sub_fold_paths:
             file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
             for file_path in file_paths:
-                if file_path.endswith('.mid') or file_path.endswith('.midi'):
+                if file_path.endswith('.mid'):
                     s = converter.parse(file_path)
                     arr = streamToNoteArray(s.parts[0])
                     for item in arr:
