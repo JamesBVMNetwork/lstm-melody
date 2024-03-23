@@ -35,9 +35,13 @@ def generate_melody(input_notes, model, seq_length = SEQUENCE_LENGTH, to_generat
     for i in range(to_generate):
         prediction_input = np.array(input_notes).reshape(1, seq_length)
         prediction = model.predict(prediction_input)
+        print(prediction.shape)
+        print(sum(prediction[0]))
         prediction = np.argmax(prediction, axis=1)
         prediction_output.append(prediction[0])
         input_notes = input_notes[1:] + [prediction[0]]
+
+    print(prediction_output)
 
     return prediction_output
     
