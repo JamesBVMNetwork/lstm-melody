@@ -30,8 +30,8 @@ def load_model_from_ckpt(ckpt):
 
 def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_generate = 10):
     input_notes = input_notes[-seq_length: ]
-    if len(input_notes) < seq_length:
-        input_notes = [MELODY_NO_EVENT for _ in range(seq_length - len(input_notes))] + input_notes
+    for i in range(seq_length - len(input_notes)):
+        input_notes.insert(0, np.random.randint(0, MELODY_SIZE))
     prediction_output = []
     for i in range(to_generate):
         prediction_input = np.array(input_notes).reshape(1, seq_length, 1)
