@@ -113,9 +113,9 @@ def make_training_data(data_dir, config):
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
                 midi_file = MidiFile(file_path)
                 for track in midi_file.tracks:
-                    for event in track.events:
+                    for event in track:
                         if event.type == "note":
-                            notes.append(event.data[1])  # Assuming note number is at index 1
+                            notes.append(event.note)  # Assuming note number is at index 1
                         else:
                             break  # Stop reading once we reach MELODY_SIZE notes
                             
