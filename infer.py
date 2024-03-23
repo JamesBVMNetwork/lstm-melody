@@ -49,7 +49,7 @@ def noteArrayToStream(note_array):
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate music using a trained model')
     parser.add_argument('--model-dir', type=str, default='model', help='Directory to load model')
-    parser.add_argument('--output-dir', type=str, default='output', help='Directory to save output')
+    parser.add_argument('--output-path', type=str, default='output.mid', help='Path to save generated music')
     return parser.parse_args()
 
 
@@ -101,7 +101,6 @@ def create_midi(prediction_output, output_file='test_output.mid'):
 
 if __name__ == '__main__':
     args = parse_args()
-    output_dir = args.output_dir
     model_dir = args.model_dir
     checkpoint_path = os.path.join(model_dir, 'model.h5')
     model_config_path = os.path.join(model_dir, 'model.json')
@@ -109,8 +108,6 @@ if __name__ == '__main__':
     model.summary()
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
-    # input_notes = [54,128,129,129,61,128,129,129,61,128,129,129,129,129,129,129,54,128,129,129,61,128,129,129,61,128,129,129,129,129,129,129,54,128,129,129,68,128, 70, 129]
-    input_notes = [67,129,129,129,67,129,129,129,67,129,128,67,129,128,67,129,128,67,129,128,67,129,62,129,70,129,128,69,55,128,67,129,67,129,129,129,67,129,129,129]
-    # input_notes = [41]
-    melody = generate_melody(input_notes, vocab, model, to_generate= 1000)
-    create_midi(melody, output_file='test_output.mid')
+    input_notes = [68, 67, 25, 78, 35]
+    melody = generate_melody(input_notes, vocab, model, to_generate= 100)
+    create_midi(melody, output_file= args.output_path)
