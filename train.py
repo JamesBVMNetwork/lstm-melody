@@ -4,8 +4,6 @@ from tqdm import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-from music21 import *
-from music21 import note, chord, stream
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -13,8 +11,10 @@ import struct
 import base64
 import json
 import glob
-from mido import MidiFile
+import time
 import argparse
+from music21 import converter, instrument, note, chord, stream, midi
+
 
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:
@@ -33,6 +33,13 @@ def parse_args():
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
 
+# Melody-RNN Format is a sequence of 8-bit integers indicating the following:
+# MELODY_NOTE_ON = [0, 127] # (note on at that MIDI pitch)
+MELODY_NOTE_OFF = 128 # (stop playing all previous notes)
+MELODY_NO_EVENT = 129 # (no change from previous event)
+# Each element in the sequence lasts for one sixteenth note.
+# This can encode monophonic music only.
+
 def streamToNoteArray(stream):
     """
     Convert a Music21 sequence to a numpy array of int8s into Melody-RNN format:
@@ -41,34 +48,27 @@ def streamToNoteArray(stream):
         129   - no event
     """
     # Part one, extract from stream
-    total_length = np.int(
-        np.round(stream.flat.highestTime / 0.25))  # in semiquavers
+    total_length = int(np.round(stream.flat.highestTime / 0.25)) # in semiquavers
     stream_list = []
     for element in stream.flat:
         if isinstance(element, note.Note):
-            stream_list.append([np.round(
-                element.offset / 0.25), np.round(element.quarterLength / 0.25), element.pitch.midi])
+            stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.pitch.midi])
         elif isinstance(element, chord.Chord):
-            stream_list.append([np.round(element.offset / 0.25), np.round(
-                element.quarterLength / 0.25), element.sortAscending().pitches[-1].midi])
-    np_stream_list = np.array(stream_list, dtype=np.int)
-    df = pd.DataFrame(
-        {'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
-    # sort the dataframe properly
-    df = df.sort_values(['pos', 'pitch'], ascending=[True, False])
-    df = df.drop_duplicates(subset=['pos'])  # drop duplicate values
+            stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.sortAscending().pitches[-1].midi])
+    np_stream_list = np.array(stream_list)
+    df = pd.DataFrame({'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
+    df = df.sort_values(['pos','pitch'], ascending=[True, False]) # sort the dataframe properly
+    df = df.drop_duplicates(subset=['pos']) # drop duplicate values
     # part 2, convert into a sequence of note events
-    # set array full of no events by default.
-    output = np.zeros(total_length+1, dtype=np.int16) + \
-        np.int16(MELODY_NO_EVENT)
+    output = np.zeros(total_length+1) + MELODY_NO_EVENT  # set array full of no events by default.
     # Fill in the output list
     for i in range(total_length):
-        if not df[df.pos == i].empty:
-            # pick the highest pitch at each semiquaver
-            n = df[df.pos == i].iloc[0]
-            output[i] = n.pitch  # set note on
+        if not df[df.pos==i].empty:
+            n = df[df.pos==i].iloc[0] # pick the highest pitch at each semiquaver
+            output[i] = n.pitch # set note on
             output[i+n.dur] = MELODY_NOTE_OFF
     return output
+
 
 def noteArrayToDataFrame(note_array):
     """
@@ -78,10 +78,10 @@ def noteArrayToDataFrame(note_array):
     df['offset'] = df.index
     df['duration'] = df.index
     df = df[df.code != MELODY_NO_EVENT]
-    # calculate durations and change to quarter note fractions
-    df.duration = df.duration.diff(-1) * -1 * 0.25
+    df.duration = df.duration.diff(-1) * -1 * 0.25  # calculate durations and change to quarter note fractions
     df = df.fillna(0.25)
-    return df[['code', 'duration']]
+    return df[['code','duration']]
+
 
 def noteArrayToStream(note_array):
     """
@@ -91,8 +91,7 @@ def noteArrayToStream(note_array):
     melody_stream = stream.Stream()
     for index, row in df.iterrows():
         if row.code == MELODY_NO_EVENT:
-            # bit of an oversimplification, doesn't produce long notes.
-            new_note = note.Rest()
+            new_note = note.Rest() # bit of an oversimplification, doesn't produce long notes.
         elif row.code == MELODY_NOTE_OFF:
             new_note = note.Rest()
         else:
@@ -100,6 +99,7 @@ def noteArrayToStream(note_array):
         new_note.quarterLength = row.duration
         melody_stream.append(new_note)
     return melody_stream
+
 
 # making data to train
 def make_training_data(data_dir, config):
@@ -111,15 +111,14 @@ def make_training_data(data_dir, config):
         file_paths = glob.glob(os.path.join(fold_path, '*'))
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                midi_file = MidiFile(file_path)
-                for track in midi_file.tracks:
-                    for event in track:
-                        if event.type == "note":
-                            notes.append(event.note)  # Assuming note number is at index 1
-                        else:
-                            break  # Stop reading once we reach MELODY_SIZE notes
-                            
-
+                start = time.perf_counter()
+                s = converter.parse(file_path)
+                arr = streamToNoteArray(s.parts[0])
+                notes.append(arr)
+                print(arr)
+                print("Converted:", file_path, "it took", time.perf_counter() - start)
+                   
+    return notes
     pitchnames = sorted(set(item for item in notes))
     print(pitchnames)
     # create a dictionary to map pitches to integers
