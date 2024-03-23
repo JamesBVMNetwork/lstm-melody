@@ -13,6 +13,7 @@ import struct
 import base64
 import json
 import glob
+import mido
 from mido import MidiFile
 import argparse
 
@@ -112,14 +113,13 @@ def make_training_data(data_dir, config):
         for file_path in file_paths:
             if file_path.endswith('.mid') or file_path.endswith('.midi'):
                 mid = MidiFile(file_path)
-                for j in range(len(mid.tracks)):
-                    for i in mid.tracks[j]:
-                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
-                            x = str(i).split(' ')
-                            if x[0] == 'note_on' or x[0] == 'note_off':
-                                if x[0] == 'note_off':
-                                    print(x[0])
-                                notes.append(int(x[2].split('=')[1]))
+                for track in mid.tracks:
+                    for event in track:
+                        if isinstance(event, (mido.Message, mido.MetaMessage)):
+                            if event.type == 'note_on' or event.type == 'note_off':
+                                if event.type == 'note_off':
+                                    print("AAAAAAAAAA", event.type)
+                                notes.append(event.note)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
