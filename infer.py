@@ -75,6 +75,6 @@ if __name__ == '__main__':
     model.summary()
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
-    input_notes = [68]
+    input_notes = [68, 67, 25, 78, 35]
     melody = generate_melody(input_notes, vocab, model, to_generate= 100)
     create_midi(melody[SEQUENCE_LENGTH - 1:], output_file='test_output.mid')
