@@ -70,7 +70,7 @@ if __name__ == '__main__':
     model = load_model_from_ckpt(checkpoint_path)
     model.summary()
     with open(model_config_path, 'r') as f:
-        vocab = json.load(model_config_path)
+        vocab = json.load(f)["vocabulary"]
     input_notes = [np.random.randint(0, MELODY_SIZE) for _ in range(10)]
     melody = generate_melody(input_notes, vocab, model)
     create_midi(melody, output_file='test_output.mid')
