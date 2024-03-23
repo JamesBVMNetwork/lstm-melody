@@ -34,7 +34,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
         input_notes = [MELODY_NO_EVENT for _ in range(seq_length - len(input_notes))] + input_notes
     prediction_output = []
     for i in range(to_generate):
-        prediction_input = np.array(input_notes).reshape(1, seq_length)
+        prediction_input = np.array(input_notes).reshape(1, seq_length, 1)
         prediction = model.predict(prediction_input)
         print(prediction)
 
