@@ -11,7 +11,7 @@ import struct
 import base64
 import json
 import glob
-import time
+import pickle
 import argparse
 from music21 import converter, note, chord, stream
 
@@ -31,14 +31,8 @@ def parse_args():
     parser.add_argument("--output-path", type=str, default = "model.json", help="Path to the output file")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
+    parser.add_argument("--data-resume-path", type = str, default = './data.pickle', help="Path to the data resume file")
     return parser.parse_args()
-
-# Melody-RNN Format is a sequence of 8-bit integers indicating the following:
-# MELODY_NOTE_ON = [0, 127] # (note on at that MIDI pitch)
-MELODY_NOTE_OFF = 128 # (stop playing all previous notes)
-MELODY_NO_EVENT = 129 # (no change from previous event)
-# Each element in the sequence lasts for one sixteenth note.
-# This can encode monophonic music only.
 
 def streamToNoteArray(stream):
     """
@@ -56,19 +50,22 @@ def streamToNoteArray(stream):
         elif isinstance(element, chord.Chord):
             stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.sortAscending().pitches[-1].midi])
     np_stream_list = np.array(stream_list, dtype=np.int32)
-    df = pd.DataFrame({'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
-    df = df.sort_values(['pos','pitch'], ascending=[True, False]) # sort the dataframe properly
-    df = df.drop_duplicates(subset=['pos']) # drop duplicate values
-    # part 2, convert into a sequence of note events
-    output = np.zeros(total_length+1, dtype=np.int32) + np.int32(MELODY_NO_EVENT)  # set array full of no events by default.
-    # Fill in the output list
-    for i in range(total_length):
-        if not df[df.pos==i].empty:
-            n = df[df.pos==i].iloc[0] # pick the highest pitch at each semiquaver
-            output[i] = n.pitch # set note on
-            output[i+n.dur] = MELODY_NOTE_OFF
-    return output
-
+    
+    if len(np_stream_list.T) > 0:
+        df = pd.DataFrame({'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
+        df = df.sort_values(['pos','pitch'], ascending=[True, False]) # sort the dataframe properly
+        df = df.drop_duplicates(subset=['pos']) # drop duplicate values
+        # part 2, convert into a sequence of note events
+        output = np.zeros(total_length+1, dtype=np.int32) + np.int32(MELODY_NO_EVENT)  # set array full of no events by default.
+        # Fill in the output list
+        for i in range(total_length):
+            if not df[df.pos==i].empty:
+                n = df[df.pos==i].iloc[0] # pick the highest pitch at each semiquaver
+                output[i] = n.pitch # set note on
+                output[i+n.dur] = MELODY_NOTE_OFF
+        return output
+    else:
+        return []
 
 def noteArrayToDataFrame(note_array):
     """
@@ -106,15 +103,24 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    
-    filenames = os.listdir(data_dir)
-    for currentpath, folders, files in os.walk(data_dir):    
-            for file_path in files:
-                if file_path.endswith('.mid'):
-                    s = converter.parse(os.path.join(currentpath, file_path))
-                    arr = streamToNoteArray(s.parts[0])
-                    for item in arr:
-                        notes.append(item)
+    resume_path = config["data_resume_path"]
+    if not os.path.exists(resume_path):
+        fold_paths = glob.glob(os.path.join(data_dir, '*'))
+        for fold_path in fold_paths:
+            sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
+            for sub_fold_path in sub_fold_paths:
+                file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
+                for file_path in file_paths:
+                    if file_path.endswith('.mid'):
+                        s = converter.parse(file_path)
+                        arr = streamToNoteArray(s.parts[0])
+                        for item in arr:
+                            notes.append(item)
+        with open(resume_path, 'wb') as f:
+            pickle.dump(notes, f)
+    else:
+        with open(resume_path, 'rb') as f:
+            notes = pickle.load(f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
@@ -264,8 +270,11 @@ def main():
     output_path = args.output_path
     ckpt = args.checkpoint_path
     config_path = args.config_path
+    resume_path = args.data_resume_path
     with open(config_path, 'r') as f:
         config = json.load(f)
+    
+    config["data_resume_path"] = resume_path
 
     X, y, note_to_index = make_training_data(data_dir, config)
 
