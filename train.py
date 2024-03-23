@@ -48,9 +48,9 @@ def streamToNoteArray(stream):
         129   - no event
     """
     # Part one, extract from stream
-    total_length = int(np.round(stream.flat.highestTime / 0.25)) # in semiquavers
+    total_length = int(np.round(stream.flatten().highestTime / 0.25)) # in semiquavers
     stream_list = []
-    for element in stream.flat:
+    for element in stream.flatten():
         if isinstance(element, note.Note):
             stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.pitch.midi])
         elif isinstance(element, chord.Chord):
