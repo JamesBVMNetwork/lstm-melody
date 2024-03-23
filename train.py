@@ -119,6 +119,8 @@ def make_training_data(data_dir, config):
                             if event.type == 'note_on' or event.type == 'note_off':
                                 if event.type == 'note_off':
                                     print("AAAAAAAAAA", event.type)
+                                elif event.type == 'note_no_event':
+                                    print("BBBBBBBBBB", event.type)
                                 notes.append(event.note)
 
     pitchnames = sorted(set(item for item in notes))
