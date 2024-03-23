@@ -57,19 +57,22 @@ def streamToNoteArray(stream):
         elif isinstance(element, chord.Chord):
             stream_list.append([np.round(element.offset / 0.25), np.round(element.quarterLength / 0.25), element.sortAscending().pitches[-1].midi])
     np_stream_list = np.array(stream_list, dtype=np.int32)
-    df = pd.DataFrame({'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
-    df = df.sort_values(['pos','pitch'], ascending=[True, False]) # sort the dataframe properly
-    df = df.drop_duplicates(subset=['pos']) # drop duplicate values
-    # part 2, convert into a sequence of note events
-    output = np.zeros(total_length+1, dtype=np.int32) + np.int32(MELODY_NO_EVENT)  # set array full of no events by default.
-    # Fill in the output list
-    for i in range(total_length):
-        if not df[df.pos==i].empty:
-            n = df[df.pos==i].iloc[0] # pick the highest pitch at each semiquaver
-            output[i] = n.pitch # set note on
-            output[i+n.dur] = MELODY_NOTE_OFF
-    return output
-
+    
+    if len(np_stream_list.T) > 0:
+        df = pd.DataFrame({'pos': np_stream_list.T[0], 'dur': np_stream_list.T[1], 'pitch': np_stream_list.T[2]})
+        df = df.sort_values(['pos','pitch'], ascending=[True, False]) # sort the dataframe properly
+        df = df.drop_duplicates(subset=['pos']) # drop duplicate values
+        # part 2, convert into a sequence of note events
+        output = np.zeros(total_length+1, dtype=np.int32) + np.int32(MELODY_NO_EVENT)  # set array full of no events by default.
+        # Fill in the output list
+        for i in range(total_length):
+            if not df[df.pos==i].empty:
+                n = df[df.pos==i].iloc[0] # pick the highest pitch at each semiquaver
+                output[i] = n.pitch # set note on
+                output[i+n.dur] = MELODY_NOTE_OFF
+        return output
+    else:
+        return []
 
 def noteArrayToDataFrame(note_array):
     """
