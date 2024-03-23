@@ -11,7 +11,7 @@ import struct
 import base64
 import json
 import glob
-import time
+import pickle
 import argparse
 from music21 import converter, note, chord, stream
 
@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument("--output-dir", type=str, default = "./outputs", help = "Path to output directory")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
+    parser.add_argument("--data-resume-path", type = str, default = './data.pickle', help="Path to the data resume file")
     return parser.parse_args()
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:
@@ -106,18 +107,24 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    
-    fold_paths = glob.glob(os.path.join(data_dir, '*'))
-    for fold_path in fold_paths:
-        sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
-        for sub_fold_path in sub_fold_paths:
-            file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
-            for file_path in file_paths:
-                if file_path.endswith('.mid'):
-                    s = converter.parse(file_path)
-                    arr = streamToNoteArray(s.parts[0])
-                    for item in arr:
-                        notes.append(item)
+    resume_path = config["data_resume_path"]
+    if not os.path.exists(resume_path):
+        fold_paths = glob.glob(os.path.join(data_dir, '*'))
+        for fold_path in fold_paths:
+            sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
+            for sub_fold_path in sub_fold_paths:
+                file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
+                for file_path in file_paths:
+                    if file_path.endswith('.mid'):
+                        s = converter.parse(file_path)
+                        arr = streamToNoteArray(s.parts[0])
+                        for item in arr:
+                            notes.append(item)
+        with open(resume_path, 'wb') as f:
+            pickle.dump(notes, f)
+    else:
+        with open(resume_path, 'rb') as f:
+            notes = pickle.load(f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
@@ -267,8 +274,11 @@ def main():
     output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
+    resume_path = args.data_resume_path
     with open(config_path, 'r') as f:
         config = json.load(f)
+    
+    config["data_resume_path"] = resume_path
 
     X, y, note_to_index = make_training_data(data_dir, config)
 
