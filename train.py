@@ -109,16 +109,18 @@ def make_training_data(data_dir, config):
 
     fold_paths = glob.glob(os.path.join(data_dir, '*'))
     for fold_path in fold_paths:
-        file_paths = glob.glob(os.path.join(fold_path, '*'))
-        for file_path in file_paths:
-            if file_path.endswith('.mid') or file_path.endswith('.midi'):
-                mid = MidiFile(file_path)
-                for j in range(len(mid.tracks)):
-                    for i in mid.tracks[j]:
-                        if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
-                            x = str(i).split(' ')
-                            if x[0] == 'note_on':
-                                notes.append(int(x[2].split('=')[1]))
+        sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
+        for sub_fold_path in sub_fold_paths:
+            file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
+            for file_path in file_paths:
+                if file_path.endswith('.mid') or file_path.endswith('.midi'):
+                    mid = MidiFile(file_path)
+                    for j in range(len(mid.tracks)):
+                        for i in mid.tracks[j]:
+                            if str(type(i)) != "<class 'mido.midifiles.meta.MetaMessage'>" and str(type(i)) != "<class 'mido.midifiles.meta.UnknownMetaMessage'>":
+                                x = str(i).split(' ')
+                                if x[0] == 'note_on':
+                                    notes.append(int(x[2].split('=')[1]))
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
