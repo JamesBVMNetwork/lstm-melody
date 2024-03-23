@@ -12,6 +12,8 @@ MELODY_NO_EVENT = 129  # (no change from previous event)
 # This can encode monophonic music only.
 MELODY_SIZE = 130
 
+SEQUENCE_LENGTH = 40
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate music using a trained model')
     parser.add_argument('--checkpoint-path', type=str, required=True,
@@ -25,7 +27,7 @@ def load_model_from_ckpt(ckpt):
 
 
 
-def generate_melody(input_notes, model, seq_length = 100, to_generate = 100):
+def generate_melody(input_notes, model, seq_length = SEQUENCE_LENGTH, to_generate = 100):
     input_notes = input_notes[-seq_length: ]
     if len(input_notes) < seq_length:
         input_notes = [MELODY_NO_EVENT for _ in range(seq_length - len(input_notes))] + input_notes
