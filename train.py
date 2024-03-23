@@ -274,7 +274,7 @@ def main():
 
     vocabulary = []
     for key, value in note_to_index.items():
-        vocabulary.append(key)
+        vocabulary.append(int(key))
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
