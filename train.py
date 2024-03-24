@@ -117,8 +117,6 @@ def make_training_data(data_dir, config):
             # If it's a file, load it (you can replace this with your file loading logic)
             elif os.path.isfile(item_path):
                 file_paths.append(item_path)
-
-    print(file_paths)
     
     load_files_from_directory(data_dir)
     
@@ -129,12 +127,14 @@ def make_training_data(data_dir, config):
                 arr = streamToNoteArray(s.parts[0])
                 for item in arr:
                     notes.append(item)
-        with open(resume_path, 'wb') as f:
-            pickle.dump(notes, f)
-    else:
-        with open(resume_path, 'rb') as f:
-            notes = pickle.load(f)
-
+                with open(resume_path, 'wb') as f:
+                    pickle.dump(notes, f)
+            elif file_path.endswith('.pickle'):
+                with open(file_path, 'rb') as f:
+                    arr = pickle.load(f)
+                    for item in arr:
+                        notes.append(item)
+                        
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
     note_to_index = dict((note, number) for number, note in enumerate(pitchnames))
