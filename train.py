@@ -102,22 +102,18 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
+    resume_path = config["data_resume_path"]
     file_paths = []
-    
-    def load_files_from_directory(directory):
-        # Loop through all items in the directory
-        for item in os.listdir(directory):
-            # Get the full path of the item
-            item_path = os.path.join(directory, item)
-            
-            # If it's a directory, recursively call the function
-            if os.path.isdir(item_path):
-                load_files_from_directory(item_path)
-            # If it's a file, load it (you can replace this with your file loading logic)
-            elif os.path.isfile(item_path):
-                file_paths.append(item_path)
-    
-    load_files_from_directory(data_dir)
+
+    def list_files_recursive(directory):
+        for entry in os.listdir(directory):
+            full_path = os.path.join(directory, entry)
+            if os.path.isdir(full_path):
+                list_files_recursive(full_path)
+            elif os.path.isfile(full_path):
+                file_paths.append(full_path)
+
+    list_files_recursive(data_dir)
     
     for file_path in tqdm(file_paths):
         if file_path.endswith('.mid'):
@@ -130,8 +126,9 @@ def make_training_data(data_dir, config):
                 arr = pickle.load(f)
                 for item in arr:
                     notes.append(item)
-        else:
-            continue
+    
+    with open(resume_path, 'wb') as f:
+        pickle.dump(notes, f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
@@ -149,8 +146,6 @@ def make_training_data(data_dir, config):
     
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
-    # normalize input
-    inputs = inputs / float(MELODY_SIZE)
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
