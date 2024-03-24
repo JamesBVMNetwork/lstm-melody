@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     parser.add_argument("--data-resume-path", type = str, default = './data.pickle', help="Path to the data resume file")
     return parser.parse_args()
+            
 
 def streamToNoteArray(stream):
     """
@@ -104,18 +105,30 @@ def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
     resume_path = config["data_resume_path"]
+    file_paths = []
+    
+    def load_files_from_directory(directory):
+        # Loop through all items in the directory
+        for item in os.listdir(data_dir):
+            # Get the full path of the item
+            item_path = os.path.join(directory, item)
+            
+            # If it's a directory, recursively call the function
+            if os.path.isdir(item_path):
+                load_files_from_directory(item_path)
+            # If it's a file, load it (you can replace this with your file loading logic)
+            elif os.path.isfile(item_path):
+                file_paths.append(item_path)
+    
+    load_files_from_directory(data_dir)
+    
     if not os.path.exists(resume_path):
-        fold_paths = glob.glob(os.path.join(data_dir, '*'))
-        for fold_path in fold_paths:
-            sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
-            for sub_fold_path in sub_fold_paths:
-                file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
-                for file_path in file_paths:
-                    if file_path.endswith('.mid'):
-                        s = converter.parse(file_path)
-                        arr = streamToNoteArray(s.parts[0])
-                        for item in arr:
-                            notes.append(item)
+        for file_path in tqdm(file_paths):
+            if file_path.endswith('.mid'):
+                s = converter.parse(file_path)
+                arr = streamToNoteArray(s.parts[0])
+                for item in arr:
+                    notes.append(item)
         with open(resume_path, 'wb') as f:
             pickle.dump(notes, f)
     else:
