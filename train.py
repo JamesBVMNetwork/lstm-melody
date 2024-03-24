@@ -12,7 +12,9 @@ import base64
 import json
 import pickle
 import argparse
+import glob
 from music21 import converter, note, chord, stream
+import os
 
 
 
@@ -104,34 +106,31 @@ def make_training_data(data_dir, config):
     sequence_length = config["seq_length"]
     resume_path = config["data_resume_path"]
     file_paths = []
+
+    def list_files_recursive(directory):
+        for entry in os.listdir(directory):
+            full_path = os.path.join(directory, entry)
+            if os.path.isdir(full_path):
+                list_files_recursive(full_path)
+            elif os.path.isfile(full_path):
+                file_paths.append(full_path)
+
+    list_files_recursive(data_dir)
     
-    def load_files_from_directory(directory):
-        # Loop through all items in the directory
-        for item in os.listdir(directory):
-            # Get the full path of the item
-            item_path = os.path.join(directory, item)
-            
-            # If it's a directory, recursively call the function
-            if os.path.isdir(item_path):
-                load_files_from_directory(item_path)
-            # If it's a file, load it (you can replace this with your file loading logic)
-            elif os.path.isfile(item_path):
-                file_paths.append(item_path)
-    
-    load_files_from_directory(data_dir)
-    
-    if not os.path.exists(resume_path):
-        for file_path in tqdm(file_paths):
-            if file_path.endswith('.mid'):
-                s = converter.parse(file_path)
-                arr = streamToNoteArray(s.parts[0])
+    for file_path in tqdm(file_paths):
+        if file_path.endswith('.mid'):
+            s = converter.parse(file_path)
+            arr = streamToNoteArray(s.parts[0])
+            for item in arr:
+                notes.append(item)
+        elif file_path.endswith('.pickle'):
+            with open(file_path, 'rb') as f:
+                arr = pickle.load(f)
                 for item in arr:
                     notes.append(item)
-        with open(resume_path, 'wb') as f:
-            pickle.dump(notes, f)
-    else:
-        with open(resume_path, 'rb') as f:
-            notes = pickle.load(f)
+    
+    with open(resume_path, 'wb') as f:
+        pickle.dump(notes, f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
@@ -149,7 +148,6 @@ def make_training_data(data_dir, config):
     
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
-    print(inputs[0], targets[0])
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -285,7 +283,9 @@ def main():
     config_path = args.config_path
     with open(config_path, 'r') as f:
         config = json.load(f)
-    
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     config["data_resume_path"] = os.path.join(output_dir, "data.pkl")
 
     X, y, note_to_index = make_training_data(data_dir, config)
