@@ -117,6 +117,8 @@ def make_training_data(data_dir, config):
             # If it's a file, load it (you can replace this with your file loading logic)
             elif os.path.isfile(item_path):
                 file_paths.append(item_path)
+
+    print(file_paths)
     
     load_files_from_directory(data_dir)
     
@@ -149,7 +151,6 @@ def make_training_data(data_dir, config):
     
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
-    print(inputs[0], targets[0])
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -287,7 +288,7 @@ def main():
         config = json.load(f)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
+
     config["data_resume_path"] = os.path.join(output_dir, "data.pkl")
 
     X, y, note_to_index = make_training_data(data_dir, config)
