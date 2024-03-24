@@ -114,7 +114,9 @@ def make_training_data(data_dir, config):
                 list_files_recursive(full_path)
             elif os.path.isfile(full_path):
                 file_paths.append(full_path)
+
     list_files_recursive(data_dir)
+    print(file_paths)
     if not os.path.exists(resume_path):
         for file_path in tqdm(file_paths):
             if file_path.endswith('.mid'):
