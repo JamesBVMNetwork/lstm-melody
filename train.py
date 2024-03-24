@@ -10,7 +10,6 @@ import tensorflow as tf
 import struct
 import base64
 import json
-import glob
 import pickle
 import argparse
 from music21 import converter, note, chord, stream
@@ -103,12 +102,11 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    resume_path = config["data_resume_path"]
     file_paths = []
     
     def load_files_from_directory(directory):
         # Loop through all items in the directory
-        for item in os.listdir(data_dir):
+        for item in os.listdir(directory):
             # Get the full path of the item
             item_path = os.path.join(directory, item)
             
@@ -151,7 +149,6 @@ def make_training_data(data_dir, config):
     
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
-    print(inputs[0], targets[0])
     # normalize input
     inputs = inputs / float(MELODY_SIZE)
     targets = np.array(targets)
@@ -285,12 +282,11 @@ def main():
     output_path = args.output_path
     ckpt = args.checkpoint_path
     config_path = args.config_path
-    resume_path = args.data_resume_path
     with open(config_path, 'r') as f:
         config = json.load(f)
     
-    config["data_resume_path"] = resume_path
-
+    X, y, note_to_index = make_training_data(data_dir, config)
+    
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
