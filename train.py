@@ -116,19 +116,18 @@ def make_training_data(data_dir, config):
                 file_paths.append(full_path)
 
     list_files_recursive(data_dir)
-    if not os.path.exists(resume_path):
-        for file_path in tqdm(file_paths):
-            file_name = os.path.basename(file_path)
-            if file_name.endswith('.mid'):
-                s = converter.parse(file_path)
-                arr = streamToNoteArray(s.parts[0])
+    
+    for file_path in tqdm(file_paths):
+        if file_path.endswith('.mid'):
+            s = converter.parse(file_path)
+            arr = streamToNoteArray(s.parts[0])
+            for item in arr:
+                notes.append(item)
+        elif file_path.endswith('.pickle'):
+            with open(file_path, 'rb') as f:
+                arr = pickle.load(f)
                 for item in arr:
                     notes.append(item)
-            elif file_name.endswith('.pickle'):
-                with open(file_path, 'rb') as f:
-                    arr = pickle.load(f)
-                    for item in arr:
-                        notes.append(item)
     
     with open(resume_path, 'wb') as f:
         pickle.dump(notes, f)
