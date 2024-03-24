@@ -31,7 +31,6 @@ def parse_args():
     parser.add_argument("--output-dir", type=str, default = "./output", help="Path to the output directory")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
-    parser.add_argument("--data-resume-path", type = str, default = './data.pickle', help="Path to the data resume file")
     return parser.parse_args()
             
 
@@ -285,10 +284,10 @@ def main():
     output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
-    resume_path = args.data_resume_path
     with open(config_path, 'r') as f:
         config = json.load(f)
     
+    resume_path = os.path.join(output_dir, "data.pkl")
     config["data_resume_path"] = resume_path
 
     X, y, note_to_index = make_training_data(data_dir, config)
