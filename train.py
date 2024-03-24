@@ -28,11 +28,12 @@ MELODY_SIZE = 130
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-path", type=str, default = "model.json", help="Path to the output file")
+    parser.add_argument("--output-dir", type=str, default = "./output", help="Path to the output directory")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     parser.add_argument("--data-resume-path", type = str, default = './data.pickle', help="Path to the data resume file")
     return parser.parse_args()
+            
 
 def streamToNoteArray(stream):
     """
@@ -104,18 +105,30 @@ def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
     resume_path = config["data_resume_path"]
+    file_paths = []
+    
+    def load_files_from_directory(directory):
+        # Loop through all items in the directory
+        for item in os.listdir(data_dir):
+            # Get the full path of the item
+            item_path = os.path.join(directory, item)
+            
+            # If it's a directory, recursively call the function
+            if os.path.isdir(item_path):
+                load_files_from_directory(item_path)
+            # If it's a file, load it (you can replace this with your file loading logic)
+            elif os.path.isfile(item_path):
+                file_paths.append(item_path)
+    
+    load_files_from_directory(data_dir)
+    
     if not os.path.exists(resume_path):
-        fold_paths = glob.glob(os.path.join(data_dir, '*'))
-        for fold_path in fold_paths:
-            sub_fold_paths = glob.glob(os.path.join(fold_path, '*'))
-            for sub_fold_path in sub_fold_paths:
-                file_paths = glob.glob(os.path.join(sub_fold_path, '*'))
-                for file_path in file_paths:
-                    if file_path.endswith('.mid'):
-                        s = converter.parse(file_path)
-                        arr = streamToNoteArray(s.parts[0])
-                        for item in arr:
-                            notes.append(item)
+        for file_path in tqdm(file_paths):
+            if file_path.endswith('.mid'):
+                s = converter.parse(file_path)
+                arr = streamToNoteArray(s.parts[0])
+                for item in arr:
+                    notes.append(item)
         with open(resume_path, 'wb') as f:
             pickle.dump(notes, f)
     else:
@@ -124,7 +137,7 @@ def make_training_data(data_dir, config):
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
-    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))   
+    note_to_index = dict((note, number) for number, note in enumerate(pitchnames))
 
     inputs = []
     targets = []
@@ -132,11 +145,13 @@ def make_training_data(data_dir, config):
     for i in range(0, len(notes) - sequence_length):
         sequence_in = notes[i:i + sequence_length]
         sequence_out = notes[i + sequence_length]
-        inputs.append([note_to_index[char] for char in sequence_in])
+        inputs.append(sequence_in)
+        # inputs.append([note_to_index[char] for char in sequence_in])
         targets.append([note_to_index[sequence_out]])
     
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
+    print(inputs[0], targets[0])
     # normalize input
     inputs = inputs / float(MELODY_SIZE)
     targets = np.array(targets)
@@ -158,9 +173,9 @@ def create_model(config, model_path = None):
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.Dense(n_vocab, activation="softmax")
+        tf.keras.layers.Dense(n_vocab)
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam', metrics=['accuracy'])
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
     return model
 
 
@@ -267,7 +282,7 @@ def main():
     args = parse_args()
 
     data_dir = args.data_dir
-    output_path = args.output_path
+    output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
     resume_path = args.data_resume_path
@@ -284,9 +299,16 @@ def main():
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(output_dir, "model.h5"),
+        save_best_only=True,
+        monitor="loss",
+        mode="min",
+        verbose = 1,
+    )
     model.summary()
-    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
-    get_model_for_export(output_path, model, vocabulary)
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()
