@@ -116,7 +116,6 @@ def make_training_data(data_dir, config):
                 file_paths.append(full_path)
 
     list_files_recursive(data_dir)
-    print(file_paths)
     if not os.path.exists(resume_path):
         for file_path in tqdm(file_paths):
             if file_path.endswith('.mid'):
@@ -124,13 +123,15 @@ def make_training_data(data_dir, config):
                 arr = streamToNoteArray(s.parts[0])
                 for item in arr:
                     notes.append(item)
-                with open(resume_path, 'wb') as f:
-                    pickle.dump(notes, f)
             elif file_path.endswith('.pickle'):
                 with open(file_path, 'rb') as f:
                     arr = pickle.load(f)
+                    print(arr)
                     for item in arr:
                         notes.append(item)
+    
+    with open(resume_path, 'wb') as f:
+        pickle.dump(notes, f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
