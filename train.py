@@ -109,7 +109,7 @@ def make_training_data(data_dir, config):
     
     def load_files_from_directory(directory):
         # Loop through all items in the directory
-        for item in os.listdir(data_dir):
+        for item in os.listdir(directory):
             # Get the full path of the item
             item_path = os.path.join(directory, item)
             
