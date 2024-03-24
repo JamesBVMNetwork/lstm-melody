@@ -12,7 +12,9 @@ import base64
 import json
 import pickle
 import argparse
+import glob
 from music21 import converter, note, chord, stream
+import os
 
 
 
@@ -105,20 +107,12 @@ def make_training_data(data_dir, config):
     resume_path = config["data_resume_path"]
     file_paths = []
     
-    def load_files_from_directory(directory):
-        # Loop through all items in the directory
-        for item in os.listdir(directory):
-            # Get the full path of the item
-            item_path = os.path.join(directory, item)
-            
-            # If it's a directory, recursively call the function
-            if os.path.isdir(item_path):
-                load_files_from_directory(item_path)
-            # If it's a file, load it (you can replace this with your file loading logic)
-            elif os.path.isfile(item_path):
-                file_paths.append(item_path)
-    
-    load_files_from_directory(data_dir)
+    for root,d_names,f_names in os.walk(data_dir):
+        for f in f_names:
+            if f.endswith('.mid'):
+                file_paths.append(os.path.join(root, f))
+            elif f.endswith('.pickle'):
+                file_paths.append(os.path.join(root, f))
     
     if not os.path.exists(resume_path):
         for file_path in tqdm(file_paths):
@@ -134,7 +128,7 @@ def make_training_data(data_dir, config):
                     arr = pickle.load(f)
                     for item in arr:
                         notes.append(item)
-                        
+
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
     note_to_index = dict((note, number) for number, note in enumerate(pitchnames))
