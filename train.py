@@ -106,14 +106,15 @@ def make_training_data(data_dir, config):
     sequence_length = config["seq_length"]
     resume_path = config["data_resume_path"]
     file_paths = []
-    
-    for root,d_names,f_names in os.walk(data_dir):
-        for f in f_names:
-            if f.endswith('.mid'):
-                file_paths.append(os.path.join(root, f))
-            elif f.endswith('.pickle'):
-                file_paths.append(os.path.join(root, f))
-    
+
+    def list_files_recursive(directory):
+        for entry in os.listdir(directory):
+            full_path = os.path.join(directory, entry)
+            if os.path.isdir(full_path):
+                list_files_recursive(full_path)
+            elif os.path.isfile(full_path):
+                file_paths.append(full_path)
+    list_files_recursive(data_dir)
     if not os.path.exists(resume_path):
         for file_path in tqdm(file_paths):
             if file_path.endswith('.mid'):
