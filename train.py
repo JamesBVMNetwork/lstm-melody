@@ -286,8 +286,7 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
     
-    resume_path = os.path.join(output_dir, "data.pkl")
-    config["data_resume_path"] = resume_path
+    config["data_resume_path"] = os.path.join(output_dir, "data.pkl")
 
     X, y, note_to_index = make_training_data(data_dir, config)
 
