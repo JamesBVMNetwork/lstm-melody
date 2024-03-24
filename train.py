@@ -1,5 +1,5 @@
 import os
-from tqdm import *
+from tqdm import tqdm
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -10,7 +10,6 @@ import tensorflow as tf
 import struct
 import base64
 import json
-import glob
 import pickle
 import argparse
 from music21 import converter, note, chord, stream
