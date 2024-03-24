@@ -102,7 +102,6 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    resume_path = config["data_resume_path"]
     file_paths = []
 
     def list_files_recursive(directory):
@@ -126,9 +125,6 @@ def make_training_data(data_dir, config):
                 arr = pickle.load(f)
                 for item in arr:
                     notes.append(item)
-    
-    with open(resume_path, 'wb') as f:
-        pickle.dump(notes, f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
