@@ -154,6 +154,7 @@ def make_training_data(data_dir, config):
 def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
+    embedding_dim = config["embedding_dim"]
     sequence_length = config["seq_length"]
 
     if model_path is not None:
@@ -161,8 +162,9 @@ def create_model(config, model_path = None):
         return model
 
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
-        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
+        tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
+        tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=embedding_dim, input_length=sequence_length),
+        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True),
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(n_vocab)
