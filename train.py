@@ -1,5 +1,5 @@
 import os
-from tqdm import tqdm
+from tqdm import *
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -12,9 +12,7 @@ import base64
 import json
 import pickle
 import argparse
-import glob
 from music21 import converter, note, chord, stream
-import os
 
 
 
@@ -104,7 +102,6 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    resume_path = config["data_resume_path"]
     file_paths = []
 
     def list_files_recursive(directory):
@@ -116,6 +113,8 @@ def make_training_data(data_dir, config):
                 file_paths.append(full_path)
 
     list_files_recursive(data_dir)
+
+    resume_path = config['data_resume_path']
 
     if not os.path.exists(resume_path):
         for file_path in tqdm(file_paths):
@@ -155,7 +154,7 @@ def make_training_data(data_dir, config):
         targets.append([note_to_index[sequence_out]])
     
     # reshape the input into a format compatible with LSTM layers
-    inputs = np.reshape(inputs, (len(inputs), sequence_length))
+    inputs = np.reshape(inputs, (len(inputs), sequence_length, 1))/MELODY_SIZE
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -164,7 +163,6 @@ def make_training_data(data_dir, config):
 def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
-    embedding_dim = config["embedding_dim"]
     sequence_length = config["seq_length"]
 
     if model_path is not None:
@@ -172,12 +170,8 @@ def create_model(config, model_path = None):
         return model
 
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
-        tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=embedding_dim, input_length=sequence_length),
-        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True),
-        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True),
+        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
-        tf.keras.layers.Dropout(0.2),
         tf.keras.layers.Dense(n_vocab)
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
@@ -292,19 +286,15 @@ def main():
     config_path = args.config_path
     with open(config_path, 'r') as f:
         config = json.load(f)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
-    config["data_resume_path"] = os.path.join(output_dir, "data.pickle")
-
+    config['data_resume_path'] = os.path.join(output_dir, 'data.pickle')
+    
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
     for key, value in note_to_index.items():
         vocabulary.append(int(key))
-
-    config["n_vocab"] = len(vocabulary)
-    model = create_model(config, ckpt)
+    
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
         save_best_only=True,
@@ -312,6 +302,9 @@ def main():
         mode="min",
         verbose = 1,
     )
+
+    config["n_vocab"] = len(vocabulary)
+    model = create_model(config, ckpt)
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
