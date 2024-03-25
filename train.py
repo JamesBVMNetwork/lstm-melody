@@ -287,6 +287,9 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     config['data_resume_path'] = os.path.join(output_dir, 'data.pickle')
     
     X, y, note_to_index = make_training_data(data_dir, config)
