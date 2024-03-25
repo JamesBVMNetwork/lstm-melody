@@ -150,7 +150,6 @@ def make_training_data(data_dir, config):
 def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
-    embedding_dim = config["embedding_dim"]
     sequence_length = config["seq_length"]
 
     if model_path is not None:
