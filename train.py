@@ -1,5 +1,5 @@
 import os
-from tqdm import tqdm
+from tqdm import *
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
@@ -12,9 +12,7 @@ import base64
 import json
 import pickle
 import argparse
-import glob
 from music21 import converter, note, chord, stream
-import os
 
 
 
@@ -29,7 +27,7 @@ MELODY_SIZE = 130
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-dir", type=str, default = "./output", help="Path to the output directory")
+    parser.add_argument("--output-path", type=str, default = './model.json', help="Path to the output file")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
@@ -104,7 +102,6 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    resume_path = config["data_resume_path"]
     file_paths = []
 
     def list_files_recursive(directory):
@@ -128,9 +125,6 @@ def make_training_data(data_dir, config):
                 arr = pickle.load(f)
                 for item in arr:
                     notes.append(item)
-    
-    with open(resume_path, 'wb') as f:
-        pickle.dump(notes, f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
@@ -156,6 +150,7 @@ def make_training_data(data_dir, config):
 def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
+    embedding_dim = config["embedding_dim"]
     sequence_length = config["seq_length"]
 
     if model_path is not None:
@@ -163,7 +158,7 @@ def create_model(config, model_path = None):
         return model
 
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),    
+        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
     ])
@@ -274,16 +269,14 @@ def main():
     args = parse_args()
 
     data_dir = args.data_dir
-    output_dir = args.output_dir
+    output_path = args.output_path
     ckpt = args.checkpoint_path
     config_path = args.config_path
     with open(config_path, 'r') as f:
         config = json.load(f)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    config["data_resume_path"] = os.path.join(output_dir, "data.pickle")
-
+    
+    X, y, note_to_index = make_training_data(data_dir, config)
+    
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
@@ -292,16 +285,9 @@ def main():
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
-    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(output_dir, "model.h5"),
-        save_best_only=True,
-        monitor="loss",
-        mode="min",
-        verbose = 1,
-    )
     model.summary()
-    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
-    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
+    get_model_for_export(output_path, model, vocabulary)
 
 if __name__ == "__main__":
     main()
