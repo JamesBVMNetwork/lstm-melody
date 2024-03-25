@@ -27,7 +27,7 @@ MELODY_SIZE = 130
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-path", type=str, default = './model.json', help="Path to the output file")
+    parser.add_argument("--output-dir", type=str, default = "./output", help="Path to the output directory")
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
@@ -269,7 +269,7 @@ def main():
     args = parse_args()
 
     data_dir = args.data_dir
-    output_path = args.output_path
+    output_dir = args.output_dir
     ckpt = args.checkpoint_path
     config_path = args.config_path
     with open(config_path, 'r') as f:
@@ -282,12 +282,20 @@ def main():
     vocabulary = []
     for key, value in note_to_index.items():
         vocabulary.append(int(key))
+    
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(output_dir, "model.h5"),
+        save_best_only=True,
+        monitor="loss",
+        mode="min",
+        verbose = 1,
+    )
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
     model.summary()
-    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
-    get_model_for_export(output_path, model, vocabulary)
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()

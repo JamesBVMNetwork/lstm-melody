@@ -1,6 +1,6 @@
 {
-    "rnn_units": 32,
+    "rnn_units": 64,
     "batch_size": 1024,
-    "epoch_num": 100,
+    "epoch_num": 1000,
     "seq_length": 10
 }
