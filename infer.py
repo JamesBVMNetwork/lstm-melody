@@ -67,16 +67,11 @@ def load_model_from_ckpt(ckpt):
 def load_stateful_model(config, model):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
-    embedding_dim = config["embedding_dim"]
     sequence_length = config["seq_length"]
 
     stateful_model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(batch_input_shape=(1,sequence_length,)),
-        tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=embedding_dim, input_length=sequence_length),
-        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, stateful=True),
-        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, stateful=True),
-        tf.keras.layers.LSTM(units = rnn_units, stateful=True),
-        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
+        tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
     ])
     stateful_model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
@@ -94,13 +89,13 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
     for i in range(to_generate):
         prediction_input = np.array(input_notes).reshape(1, seq_length, 1) / MELODY_SIZE
 
-        activations = get_activations(model, prediction_input, auto_compile=True)
-        [print(k, '->', v.shape, '- Numpy array') for (k, v) in activations.items()]
-        print(activations['lstm_1'])
+        # activations = get_activations(model, prediction_input, auto_compile=True)
+        # [print(k, '->', v.shape, '- Numpy array') for (k, v) in activations.items()]
+        # print(activations['lstm_1'])
 
         prediction_logits = model.predict(prediction_input)
 
-        # print(prediction_logits)
+        print(prediction_logits)
 
         prediction_logits = prediction_logits / temperature
 
@@ -190,9 +185,9 @@ if __name__ == '__main__':
 
     export_weights(model)
 
-    input_notes = [68]
-    # input_notes = [68, 129, 30, 31, 32, 35, 129, 37]
+    # input_notes = [68]
+    input_notes = [68, 129, 30, 31, 32, 35, 129, 37, 35, 33]
     # input_notes = [68, 67, 25, 78, 35, 68, 67, 25, 78, 35, 68, 67, 25, 78, 35, 68, 67, 25, 78, 35, 68, 67, 25, 78, 35, 68, 67, 25, 78, 35, 68, 67, 25, 78, 35, 68, 67, 25, 78, 35]
     # melody = generate_melody_stateful(input_notes, vocab, stateful_model, to_generate= 100)
-    melody = generate_melody(input_notes, vocab, model, seq_length=len(input_notes), to_generate= 1)
+    melody = generate_melody(input_notes, vocab, model, seq_length=len(input_notes), to_generate=1)
     create_midi(melody, output_file= args.output_path)
