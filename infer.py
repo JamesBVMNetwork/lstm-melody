@@ -17,7 +17,7 @@ MELODY_NO_EVENT = 129  # (no change from previous event)
 # This can encode monophonic music only.
 MELODY_SIZE = 130
 
-SEQUENCE_LENGTH = 40
+SEQUENCE_LENGTH = 10
 
 def write_to_file(file_path, content):
     with open(file_path, "w") as f:
@@ -92,7 +92,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 
     temperature = 1.0
     for i in range(to_generate):
-        prediction_input = np.array(input_notes).reshape(1, seq_length)
+        prediction_input = np.array(input_notes).reshape(1, seq_length, 1) / MELODY_SIZE
 
         activations = get_activations(model, prediction_input, auto_compile=True)
         [print(k, '->', v.shape, '- Numpy array') for (k, v) in activations.items()]
