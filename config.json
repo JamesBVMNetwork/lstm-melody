@@ -1,6 +1,7 @@
 {
-    "rnn_units": 128,
+    "embedding_dim": 16,
+    "rnn_units": 32,
     "batch_size": 512,
-    "epoch_num": 50,
-    "seq_length": 100
+    "epoch_num": 100,
+    "seq_length": 10
 }

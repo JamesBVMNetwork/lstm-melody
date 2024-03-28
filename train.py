@@ -134,8 +134,6 @@ def make_training_data(data_dir, config):
     
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
-    # normalize input
-    inputs = inputs / float(MELODY_SIZE)
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -145,6 +143,7 @@ def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
     sequence_length = config["seq_length"]
+    embedding_dim = config["embedding_dim"]
 
     if model_path is not None:
         model = tf.keras.models.load_model(model_path)
@@ -152,9 +151,10 @@ def create_model(config, model_path = None):
 
     model = tf.keras.Sequential([
         tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
+        tf.keras.layers.Embedding(input_dim = MELODY_SIZE, output_dim = embedding_dim, input_shape=sequence_length),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True, input_shape=(sequence_length, 1)),
         tf.keras.layers.LSTM(units = rnn_units),
-        tf.keras.layers.Dense(n_vocab, activation="softmax")
+        tf.keras.layers.Dense(n_vocab)
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(), optimizer='adam', metrics=['accuracy'])
     return model
