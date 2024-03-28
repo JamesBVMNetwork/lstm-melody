@@ -150,8 +150,8 @@ def create_model(config, model_path = None):
         return model
 
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape= (sequence_length,)),
-        tf.keras.layers.Embedding(input_dim = MELODY_SIZE, output_dim = embedding_dim, input_shape=sequence_length),
+        tf.keras.layers.InputLayer(input_shape= (sequence_length,)) ,
+        tf.keras.layers.Embedding(input_dim = MELODY_SIZE, output_dim = embedding_dim, input_length = sequence_length),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True),
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
