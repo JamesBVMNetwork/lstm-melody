@@ -303,7 +303,7 @@ def main():
         vocabulary.append(int(key))
     
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(output_dir, "model.h5"),
+        filepath=os.path.join(output_dir, "model.keras"),
         save_best_only=True,
         monitor="loss",
         mode="min",
