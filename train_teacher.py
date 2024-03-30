@@ -298,7 +298,7 @@ def main():
     config['data_resume_path'] = os.path.join(output_dir, 'data.pickle')
     
     X, y, note_to_index = make_training_data(data_dir, config)
-    X_train, y_train, X_test, y_test =  train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
+    X_train, X_test, y_train, y_test =  train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
 
     vocabulary = []
     for key, value in note_to_index.items():
@@ -320,7 +320,7 @@ def main():
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
     model.summary()
-    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=100, batch_size=128, callbacks=[checkpoint_callback, early_stopping])
+    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=config['epoch_num'], batch_size=config['batch_size'], callbacks=[checkpoint_callback, early_stopping])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
