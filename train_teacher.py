@@ -13,6 +13,7 @@ import json
 import pickle
 import argparse
 from music21 import converter, note, chord, stream
+from sklearn.model_selection import train_test_split
 
 
 
@@ -297,6 +298,7 @@ def main():
     config['data_resume_path'] = os.path.join(output_dir, 'data.pickle')
     
     X, y, note_to_index = make_training_data(data_dir, config)
+    X_train, y_train, X_test, y_test =  train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
 
     vocabulary = []
     for key, value in note_to_index.items():
@@ -305,15 +307,20 @@ def main():
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.keras"),
         save_best_only=True,
-        monitor="loss",
+        monitor="val_loss",
         mode="min",
         verbose = 1,
+    )
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=5,
+        verbose=1    
     )
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
     model.summary()
-    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=100, batch_size=128, callbacks=[checkpoint_callback, early_stopping])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
