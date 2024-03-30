@@ -13,7 +13,6 @@ import json
 import pickle
 import argparse
 from music21 import converter, note, chord, stream
-from sklearn.model_selection import train_test_split
 
 
 
@@ -155,7 +154,7 @@ def make_training_data(data_dir, config):
         targets.append([note_to_index[sequence_out]])
     
     # reshape the input into a format compatible with LSTM layers
-    inputs = np.reshape(inputs, (len(inputs), sequence_length, 1))
+    inputs = np.reshape(inputs, (len(inputs), sequence_length, 1))/MELODY_SIZE
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -170,16 +169,12 @@ def create_model(config, model_path = None):
         model = tf.keras.models.load_model(model_path)
         return model
 
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Input(shape = (sequence_length, )),
-        tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=256, input_shape=sequence_length),
-        tf.keras.layers.LSTM(units=256, return_sequences=True),
-        tf.keras.layers.LSTM(units=512, return_sequences=True),
-        tf.keras.layers.LSTM(units=1024, return_sequences=True),
-        tf.keras.layers.LSTM(units=1024),
+    model = tf.keras.Sequential([
+        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
+        tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
     ])
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
     return model
 
 
@@ -298,37 +293,23 @@ def main():
     config['data_resume_path'] = os.path.join(output_dir, 'data.pickle')
     
     X, y, note_to_index = make_training_data(data_dir, config)
-    X_train, X_test, y_train, y_test =  train_test_split(X, y, test_size=0.1, random_state=42, shuffle=True)
 
     vocabulary = []
     for key, value in note_to_index.items():
         vocabulary.append(int(key))
     
-    # reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
-    #     monitor="val_loss",
-    #     factor=0.1,
-    #     patience=15,
-    #     min_lr=0.0001,
-    #     verbose=1
-    # )
-    # scheduler_callback = tf.keras.callbacks.LearningRateScheduler(lambda epoch: 0.001 * np.exp(-epoch / 10.))
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(output_dir, "model.keras"),
+        filepath=os.path.join(output_dir, "model.h5"),
         save_best_only=True,
-        monitor="val_loss",
+        monitor="loss",
         mode="min",
         verbose = 1,
-    )
-    early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss',
-        patience=5,
-        verbose=1    
     )
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, ckpt)
     model.summary()
-    model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=config['epoch_num'], batch_size=config['batch_size'], callbacks=[checkpoint_callback, early_stopping])
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
