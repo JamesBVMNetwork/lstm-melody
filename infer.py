@@ -3,7 +3,7 @@ import argparse
 import tensorflow as tf
 import os
 import json
-from music21 import instrument, note, stream
+from music21 import note, stream
 import pandas as pd
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:

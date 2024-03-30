@@ -169,9 +169,13 @@ def create_model(config, model_path = None):
         model = tf.keras.models.load_model(model_path)
         return model
 
-    model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
-        tf.keras.layers.LSTM(units = rnn_units),
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
+        tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=256, input_shape=sequence_length),
+        tf.keras.layers.LSTM(units=256, return_sequences=True),
+        tf.keras.layers.LSTM(units=512, return_sequences=True),
+        tf.keras.layers.LSTM(units=1024, return_sequences=True),
+        tf.keras.layers.LSTM(units=1024),
         tf.keras.layers.Dense(n_vocab)
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
