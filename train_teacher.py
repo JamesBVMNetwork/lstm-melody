@@ -179,7 +179,7 @@ def create_model(config, model_path = None):
         tf.keras.layers.LSTM(units=1024),
         tf.keras.layers.Dense(n_vocab)
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics = ['val_loss', 'accuracy'])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 
@@ -304,6 +304,14 @@ def main():
     for key, value in note_to_index.items():
         vocabulary.append(int(key))
     
+    # reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+    #     monitor="val_loss",
+    #     factor=0.1,
+    #     patience=15,
+    #     min_lr=0.0001,
+    #     verbose=1
+    # )
+    # scheduler_callback = tf.keras.callbacks.LearningRateScheduler(lambda epoch: 0.001 * np.exp(-epoch / 10.))
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.keras"),
         save_best_only=True,
