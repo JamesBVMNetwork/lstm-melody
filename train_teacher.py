@@ -179,7 +179,7 @@ def create_model(config, model_path = None):
         tf.keras.layers.LSTM(units=1024),
         tf.keras.layers.Dense(n_vocab)
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
+    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics = ['val_loss', 'accuracy'])
     return model
 
 
