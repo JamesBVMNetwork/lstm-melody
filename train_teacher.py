@@ -170,7 +170,7 @@ def create_model(config, model_path = None):
         return model
 
     model = tf.keras.models.Sequential([
-        tf.keras.Input(sequence_length, ),
+        tf.keras.layers(shape = (sequence_length, )),
         tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=256, input_shape=sequence_length),
         tf.keras.layers.LSTM(units=256, return_sequences=True),
         tf.keras.layers.LSTM(units=512, return_sequences=True),
