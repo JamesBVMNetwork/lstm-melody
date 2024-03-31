@@ -57,3 +57,6 @@ class Distiller(keras.Model):
 
     def to_json(self):
         return self.student.to_json()
+    
+    def save_model(self, path):
+        self.student.save(path)

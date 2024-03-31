@@ -343,5 +343,6 @@ def main():
     model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=config['epoch_num'], batch_size=config['batch_size'], callbacks=[checkpoint_callback, early_stopping])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
+
 if __name__ == "__main__":
     main()
