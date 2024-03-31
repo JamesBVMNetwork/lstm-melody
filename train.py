@@ -4,14 +4,15 @@ from tqdm import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-import numpy as np
-import pandas as pd
-import tensorflow as tf
 import struct
 import base64
 import json
 import pickle
 import argparse
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from kd import Distiller
 from music21 import converter, note, chord, stream
 
 
@@ -26,10 +27,12 @@ MELODY_SIZE = 130
 
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
+    parser.add_argument("--config-path", type=str, default = "./config.json", help="Path to the config file")
     parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
     parser.add_argument("--output-dir", type=str, default = "./output", help="Path to the output directory")
-    parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
-    parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
+    parser.add_argument("--student-checkpoint-path", type =str, default=None, help="Path to the checkpoint file")
+    parser.add_argument("--teacher-checkpoint-path", type =str, required = True, help="Path to the teacher checkpoint file")
+
     return parser.parse_args()
             
 
@@ -158,24 +161,43 @@ def make_training_data(data_dir, config):
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
+def create_model(config, teacher_checkpoint, student_checkpoint=None):
+    teacher_model = tf.keras.models.load_model(teacher_checkpoint)
+    if student_checkpoint is not None:
+        student_model = tf.keras.models.load_model(student_checkpoint)
+        distiller = Distiller(student=student_model, teacher=teacher_model)
+        distiller.compile(
+            optimizer=tf.keras.optimizers.Adam(),
+            metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+            student_loss_fn=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            distillation_loss_fn=tf.keras.losses.KLDivergence(),
+            alpha=0.1,
+            temperature=10,
+        )
+        return distiller
 
-
-def create_model(config, model_path = None):
+    embedding_dim = config["embedding_dim"]
     rnn_units = config["rnn_units"]
-    n_vocab = config["n_vocab"]
+    vocab_size = config["vocab_size"]
     sequence_length = config["seq_length"]
 
-    if model_path is not None:
-        model = tf.keras.models.load_model(model_path)
-        return model
-
-    model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
-        tf.keras.layers.LSTM(units = rnn_units),
-        tf.keras.layers.Dense(n_vocab)
+    student_model = tf.keras.models.Sequential([
+        tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
+        tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim, input_shape=sequence_length),
+        tf.keras.layers.LSTM(units=rnn_units),
+        tf.keras.layers.Dense(vocab_size)
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
-    return model
+
+    distiller = Distiller(student=student_model, teacher=teacher_model)
+    distiller.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()],
+        student_loss_fn=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        distillation_loss_fn=tf.keras.losses.KLDivergence(),
+        alpha=0.1,
+        temperature=10,
+    )
+    return distiller
 
 
 def get_weights(model):
@@ -282,8 +304,9 @@ def main():
 
     data_dir = args.data_dir
     output_dir = args.output_dir
-    ckpt = args.checkpoint_path
     config_path = args.config_path
+    student_ckpt = args.student_checkpoint_path
+    teacher_ckpt = args.teacher_checkpoint_path
     with open(config_path, 'r') as f:
         config = json.load(f)
 
@@ -307,7 +330,7 @@ def main():
     )
 
     config["n_vocab"] = len(vocabulary)
-    model = create_model(config, ckpt)
+    model = create_model(config, teacher_ckpt, student_ckpt)
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
