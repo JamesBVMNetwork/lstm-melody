@@ -213,7 +213,7 @@ def compressConfig(data):
         cfg = layer["config"]
         if layer["class_name"] == "InputLayer":
             layer_config = {
-                "batch_input_shape": cfg["batch_input_shape"]
+                "batch_input_shape": cfg["batch_shape"]
             }
         elif layer["class_name"] == "Rescaling":
             layer_config = {
@@ -331,7 +331,6 @@ def main():
 
     config["n_vocab"] = len(vocabulary)
     model = create_model(config, teacher_ckpt, student_ckpt)
-    print(model.to_json())
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
     get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
