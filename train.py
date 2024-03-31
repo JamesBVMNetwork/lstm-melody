@@ -154,7 +154,7 @@ def make_training_data(data_dir, config):
         targets.append([note_to_index[sequence_out]])
     
     # reshape the input into a format compatible with LSTM layers
-    inputs = np.reshape(inputs, (len(inputs), sequence_length, 1))/MELODY_SIZE
+    inputs = np.reshape(inputs, (len(inputs), sequence_length))
     targets = np.array(targets)
     return inputs, targets, note_to_index
 
@@ -170,7 +170,10 @@ def create_model(config, model_path = None):
         return model
 
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
+        tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
+        tf.keras.layers.Embedding(MELODY_SIZE, 100, input_length=sequence_length),
+        tf.keras.layers.LSTM(units = int(rnn_units/2), return_sequences=True),
+        tf.keras.layers.LSTM(units = rnn_units, return_sequences=True),
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
     ])
