@@ -178,12 +178,12 @@ def create_model(config, teacher_checkpoint, student_checkpoint=None):
 
     embedding_dim = config["embedding_dim"]
     rnn_units = config["rnn_units"]
-    vocab_size = config["vocab_size"]
+    vocab_size = config["n_vocab"]
     sequence_length = config["seq_length"]
 
     student_model = tf.keras.models.Sequential([
         tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
-        tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim, input_shape=sequence_length),
+        tf.keras.layers.Embedding(input_dim=MELODY_SIZE, output_dim=embedding_dim, input_shape=sequence_length),
         tf.keras.layers.LSTM(units=rnn_units),
         tf.keras.layers.Dense(vocab_size)
     ])
