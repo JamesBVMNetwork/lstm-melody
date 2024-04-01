@@ -33,7 +33,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 
     temperature = 1.0
     for i in range(to_generate):
-        prediction_input = np.array(input_notes).reshape(1, seq_length)
+        prediction_input = np.array(selected_notes).reshape(1, seq_length)
         prediction_logits = model.predict(prediction_input)
 
         prediction_logits = prediction_logits / temperature
@@ -88,6 +88,6 @@ if __name__ == '__main__':
     model.summary()
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
-    input_notes = [68, 67, 25, 78, 35]
+    input_notes = []
     melody = generate_melody(input_notes, vocab, model, to_generate= 100)
     create_midi(melody, output_file= args.output_path)
