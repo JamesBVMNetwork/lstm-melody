@@ -14,10 +14,10 @@ import argparse
 from music21 import converter, note, chord, instrument
 
 
-def extract_notes_from_midi(file):
+def extract_notes_from_midi(file_path):
     notes = []
     pick = None
-    midi = converter.parse(file)
+    midi = converter.parse(file_path)
     songs = instrument.partitionByInstrument(midi)
     for part in songs.parts:
         pick = part.recurse()
@@ -26,7 +26,6 @@ def extract_notes_from_midi(file):
                 notes.append(str(element.pitch))
             elif isinstance(element, chord.Chord):
                 notes.append(".".join(str(n) for n in element.normalOrder))
-    print(111111)
     return notes
 
 def parse_args():
@@ -53,22 +52,19 @@ def make_training_data(data_dir, config):
 
     list_files_recursive(data_dir)
 
-    print(file_paths[:50])
-
     resume_path = config['data_resume_path']
 
     if not os.path.exists(resume_path):
         for file_path in tqdm(file_paths):
             try:
                 if file_path.endswith('.mid'):
-                    note_arr = extract_notes_from_midi(file_path)
-                    for item in note_arr:
-                        notes.append(item)
+                    print(114124234234242342432)
+                    note_list = extract_notes_from_midi(file_path)
+                    notes = notes + note_list
                 elif file_path.endswith('.pickle'):
                     with open(file_path, 'rb') as f:
-                        note_arr = pickle.load(f)
-                        for item in note_arr:
-                            notes.append(item)
+                        note_list = pickle.load(f)
+                        notes = notes + note_list
             except Exception as error: 
                 print("Error reading file", file_path)
                 print(error)
