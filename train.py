@@ -54,26 +54,21 @@ def make_training_data(data_dir, config):
 
     resume_path = config['data_resume_path']
 
-    if not os.path.exists(resume_path):
-        for file_path in tqdm(file_paths):
-            try:
-                if file_path.endswith('.mid'):
-                    print(114124234234242342432)
-                    note_list = extract_notes_from_midi(file_path)
+    for file_path in tqdm(file_paths):
+        try:
+            if file_path.endswith('.mid'):
+                note_list = extract_notes_from_midi(file_path)
+                notes = notes + note_list
+            elif file_path.endswith('.pickle'):
+                with open(file_path, 'rb') as f:
+                    note_list = pickle.load(f)
                     notes = notes + note_list
-                elif file_path.endswith('.pickle'):
-                    with open(file_path, 'rb') as f:
-                        note_list = pickle.load(f)
-                        notes = notes + note_list
-            except Exception as error: 
-                print("Error reading file", file_path)
-                print(error)
-        
-        with open(resume_path, 'wb') as f:
-            pickle.dump(notes, f)
-    else:
-        with open(resume_path, 'rb') as f:
-            notes = pickle.load(f)
+        except Exception as error: 
+            print("Error reading file", file_path)
+            print(error)
+    
+    with open(resume_path, 'wb') as f:
+        pickle.dump(notes, f)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
