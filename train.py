@@ -57,8 +57,7 @@ def make_training_data(data_dir, config):
         for file_path in tqdm(file_paths):
             try:
                 if file_path.endswith('.mid'):
-                    s = converter.parse(file_path)
-                    note_arr = read_notes_from_midi(s.parts[0])
+                    note_arr = read_notes_from_midi(file_path)
                     for item in note_arr:
                         notes.append(item)
                 elif file_path.endswith('.pickle'):
