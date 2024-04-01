@@ -26,6 +26,7 @@ def extract_notes_from_midi(file):
                 notes.append(str(element.pitch))
             elif isinstance(element, chord.Chord):
                 notes.append(".".join(str(n) for n in element.normalOrder))
+    print(111111)
     return notes
 
 def parse_args():
