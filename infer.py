@@ -41,7 +41,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
         prediction = tf.squeeze(predicted_ids, axis=-1)
 
         prediction_output.append(vocab[prediction[0]])
-        selected_notes.append(prediction[0])
+        selected_notes = selected_notes[1:] + [prediction[0]]
 
     prediction_output = [vocab[output] for output in prediction_output]
 
