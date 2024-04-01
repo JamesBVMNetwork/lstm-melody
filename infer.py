@@ -35,6 +35,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
     for i in range(to_generate):
         prediction_input = np.array(selected_notes).reshape(1, seq_length)
         prediction_logits = model.predict(prediction_input)
+        print(prediction_logits)
 
         prediction_logits = prediction_logits / temperature
 
