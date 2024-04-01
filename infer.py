@@ -43,6 +43,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
         prediction_output.append(vocab[prediction[0]])
         selected_notes = selected_notes[1:] + [prediction[0]]
 
+    print(prediction_output)
     return prediction_output
 
 def handle_output_notes(prediction_output):
