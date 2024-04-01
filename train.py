@@ -73,7 +73,6 @@ def make_training_data(data_dir, config):
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
     note_to_index = dict((note, number) for number, note in enumerate(pitchnames))
-    print(len(note_to_index))
 
     inputs = []
     targets = []
@@ -231,8 +230,7 @@ def main():
 
     vocabulary = []
     for key, value in note_to_index.items():
-        print(key,value)
-        vocabulary.append(key)
+        vocabulary.append(str(key))
     
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
