@@ -14,8 +14,9 @@ import argparse
 from music21 import converter, note, chord, instrument
 
 
-def read_notes_from_midi(file):
+def extract_notes_from_midi(file):
     notes = []
+    pick = None
     midi = converter.parse(file)
     songs = instrument.partitionByInstrument(midi)
     for part in songs.parts:
@@ -57,7 +58,8 @@ def make_training_data(data_dir, config):
         for file_path in tqdm(file_paths):
             try:
                 if file_path.endswith('.mid'):
-                    note_arr = read_notes_from_midi(file_path)
+                    note_arr = extract_notes_from_midi(file_path)
+                    print(note_arr)
                     for item in note_arr:
                         notes.append(item)
                 elif file_path.endswith('.pickle'):
