@@ -11,8 +11,7 @@ import base64
 import json
 import pickle
 import argparse
-from music21 import converter, note, chord, instrument
-
+from utils import read_notes_from_midi
 
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
@@ -21,25 +20,6 @@ def parse_args():
     parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
     parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
     return parser.parse_args()
-
-
-def read_notes_from_midi(file):
-    notes = []
-    midi = converter.parse(file)
-    notes_to_parse = None
-    parts = instrument.partitionByInstrument(midi)
-    if parts: # file has instrument parts
-        notes_to_parse = parts.parts[0].recurse()
-    else: # file has notes in a flat structure
-        notes_to_parse = midi.flat.notes
-    for element in notes_to_parse:
-        if isinstance(element, note.Note):
-            notes.append(str(element.pitch))
-        elif isinstance(element, chord.Chord):
-            notes.append('.'.join(str(n) for n in element.normalOrder))
-    return notes
-
-
 
 # making data to train
 def make_training_data(data_dir, config):
