@@ -52,6 +52,8 @@ def make_training_data(data_dir, config):
 
     list_files_recursive(data_dir)
 
+    print("Total files found: ", len(file_paths))
+
     resume_path = config['data_resume_path']
 
     if not os.path.exists(resume_path):
