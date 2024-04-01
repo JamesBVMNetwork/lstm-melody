@@ -28,7 +28,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
             selected_notes.append(note)
     selected_notes = selected_notes[-seq_length:]
     if len(selected_notes) < seq_length:
-        selected_notes.append(random.choice(vocab))
+        selected_notes.append(random.randint(0, len(vocab) - 1))
     prediction_output = []
     print(selected_notes)
     temperature = 1.0
