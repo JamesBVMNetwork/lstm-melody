@@ -53,7 +53,7 @@ def make_training_data(data_dir, config):
 
     list_files_recursive(data_dir)
 
-    print("Total files found: ", len(file_paths))
+    print(file_path[:50])
 
     resume_path = config['data_resume_path']
 
@@ -61,7 +61,6 @@ def make_training_data(data_dir, config):
         for file_path in tqdm(file_paths):
             try:
                 if file_path.endswith('.mid'):
-                    print(file_path)
                     note_arr = extract_notes_from_midi(file_path)
                     for item in note_arr:
                         notes.append(item)
