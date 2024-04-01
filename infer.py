@@ -69,6 +69,7 @@ def handle_output_notes(prediction_output):
             output_notes.append(new_note)
         # increase offset each iteration so that notes do not stack
         offset += 0.5
+    return output_notes
     
 def create_midi(prediction_output, output_file='test_output.mid'):
     """ convert the output from the prediction to notes and create a midi file
