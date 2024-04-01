@@ -87,7 +87,6 @@ def make_training_data(data_dir, config):
     # reshape the input into a format compatible with LSTM layers
     inputs = np.reshape(inputs, (len(inputs), sequence_length))
     targets = np.array(targets)
-    print(targets[0])
     return inputs, targets, note_to_index
 
 
@@ -230,8 +229,12 @@ def main():
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
+    values = []
     for key, value in note_to_index.items():
         vocabulary.append(str(key))
+        values.append(value)
+
+    print("Vocabulary: ", vocabulary)
     
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
