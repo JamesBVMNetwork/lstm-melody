@@ -73,6 +73,7 @@ def make_training_data(data_dir, config):
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
     note_to_index = dict((note, number) for number, note in enumerate(pitchnames))
+    print(len(note_to_index))
 
     inputs = []
     targets = []
@@ -233,19 +234,19 @@ def main():
         print(key,value)
         vocabulary.append(key)
     
-    # checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-    #     filepath=os.path.join(output_dir, "model.h5"),
-    #     save_best_only=True,
-    #     monitor="loss",
-    #     mode="min",
-    #     verbose = 1,
-    # )
+    checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(output_dir, "model.h5"),
+        save_best_only=True,
+        monitor="loss",
+        mode="min",
+        verbose = 1,
+    )
 
-    # config["n_vocab"] = len(vocabulary)
-    # model = create_model(config, ckpt)
-    # model.summary()
-    # model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
-    # get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
+    config["n_vocab"] = len(vocabulary)
+    model = create_model(config, ckpt)
+    model.summary()
+    model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"], callbacks=[checkpoint_callback])
+    get_model_for_export(os.path.join(output_dir, "model.json"), model, vocabulary)
 
 if __name__ == "__main__":
     main()
