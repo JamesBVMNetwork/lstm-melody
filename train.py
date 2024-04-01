@@ -53,7 +53,7 @@ def make_training_data(data_dir, config):
 
     list_files_recursive(data_dir)
 
-    print(file_path[:50])
+    print(file_paths[:50])
 
     resume_path = config['data_resume_path']
 
