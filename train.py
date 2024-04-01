@@ -78,7 +78,9 @@ def make_training_data(data_dir, config):
     targets = []
     # create input sequences and the corresponding outputs
     for i in range(0, len(notes) - sequence_length):
-        sequence_in = notes[i:i + sequence_length]
+        sequence_in = []
+        for j in range(sequence_length):
+            sequence_in.append(note_to_index[notes[i + j]])
         sequence_out = notes[i + sequence_length]
         inputs.append(sequence_in)
         # inputs.append([note_to_index[char] for char in sequence_in])
@@ -229,12 +231,8 @@ def main():
     X, y, note_to_index = make_training_data(data_dir, config)
 
     vocabulary = []
-    values = []
     for key, value in note_to_index.items():
         vocabulary.append(str(key))
-        values.append(value)
-
-    print("Vocabulary: ", vocabulary)
     
     checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(output_dir, "model.h5"),
