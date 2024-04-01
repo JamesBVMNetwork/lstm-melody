@@ -49,7 +49,6 @@ def handle_output_notes(prediction_output):
     output_notes = []
     offset = 0
     for pattern in prediction_output:
-        print(pattern)
         # pattern is a chord
         if ('.' in pattern) or pattern.isdigit():
             notes_in_chord = pattern.split('.')
