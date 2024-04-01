@@ -27,7 +27,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
         if note in vocab:
             selected_notes.append(note)
     selected_notes = selected_notes[-seq_length:]
-    if len(selected_notes) < seq_length:
+    for i in range(seq_length - len(selected_notes)):
         selected_notes.append(random.randint(0, len(vocab) - 1))
     prediction_output = []
     print(selected_notes)
