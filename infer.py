@@ -29,7 +29,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
     selected_notes = selected_notes[-seq_length:]
     for i in range(seq_length - len(selected_notes)):
         selected_notes.append(random.randint(0, len(vocab) - 1))
-    prediction_output = []
+    prediction_output = ""
     temperature = 1.0
     for i in range(to_generate):
         prediction_input = np.array(selected_notes).reshape(1, seq_length)
@@ -40,10 +40,9 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
         predicted_ids = tf.random.categorical(prediction_logits, num_samples=1)
         prediction = tf.squeeze(predicted_ids, axis=-1)
 
-        prediction_output.append(vocab[prediction[0]])
+        prediction_output += vocab[prediction[0]]
         selected_notes = selected_notes[1:] + [prediction[0]]
 
-    print(prediction_output)
     return prediction_output
 
 def handle_output_notes(prediction_output):
