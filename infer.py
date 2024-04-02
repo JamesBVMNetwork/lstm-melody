@@ -68,30 +68,31 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 def stream_from_outputs(prediction_output):
     midi_stream = stream.Score()
     for key, value in USED_INSTRUMENTS.items():
-        offset = 0
-        p = stream.Part()
-        p.insert(instrument.fromString(key))
-        m1p = stream.Measure()
-        for pattern in prediction_output:
-            if pattern == 'R':
-                m1p.append(note.Rest())
-            # chord
-            elif ('.' in pattern) or pattern.isdigit():
-                notes_in_chord = pattern.split('.')
-                notes = []
-                for current_note in notes_in_chord:
-                    new_note = note.Note(current_note)
-                    notes.append(new_note)
-                new_chord = chord.Chord(notes)
-                new_chord.offset = offset
-                m1p.append(new_chord)
-            else:
-                new_note = note.Note(pattern)
-                new_note.offset = offset
-                m1p.append(new_note)
-            offset += NOTE_INTERVALS[key]
-        p.append(m1p)
-        midi_stream.insert(0, p)
+        if value:
+            offset = 0
+            p = stream.Part()
+            p.insert(instrument.fromString(key))
+            m1p = stream.Measure()
+            for pattern in prediction_output:
+                if pattern == 'R':
+                    m1p.append(note.Rest())
+                # chord
+                elif ('.' in pattern) or pattern.isdigit():
+                    notes_in_chord = pattern.split('.')
+                    notes = []
+                    for current_note in notes_in_chord:
+                        new_note = note.Note(current_note)
+                        notes.append(new_note)
+                    new_chord = chord.Chord(notes)
+                    new_chord.offset = offset
+                    m1p.append(new_chord)
+                else:
+                    new_note = note.Note(pattern)
+                    new_note.offset = offset
+                    m1p.append(new_note)
+                offset += NOTE_INTERVALS[key]
+            p.append(m1p)
+            midi_stream.insert(0, p)
     return midi_stream
     
 def create_midi(prediction_output, output_file='test_output.mid'):
