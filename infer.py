@@ -9,6 +9,26 @@ from music21 import note, chord, instrument, stream
 
 SEQUENCE_LENGTH = 20
 
+USED_INSTRUMENTS = {
+    "Piano": True,
+    "Drum": True,
+    "Guitar": True,
+    "Bass": True,
+    "String": True,
+    "Violin": False,
+    "Saxophone": False
+}
+
+NOTE_INTERVALS = {
+    "Piano": 0.4,
+    "Drum": 0.5,
+    "Guitar": 0.7,
+    "Bass": 0.5,
+    "String": 0.6,
+    "Violin": 0.5,
+    "Saxophone": 0.5
+}
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate music using a trained model')
     parser.add_argument('--model-dir', type=str, default='model', help='Directory to load model')
@@ -45,41 +65,40 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 
     return prediction_output
 
-def handle_output_notes(prediction_output):
-    output_notes = []
-    offset = 0
-    for pattern in prediction_output:
-        note_pattern = pattern.split("__")[0]
-        instrument_name = pattern.split("__")[1]
-        if instrument_name != "Piano":
-            print(note_pattern, instrument_name)
-        # pattern is a chord
-        if ('.' in note_pattern) or note_pattern.isdigit():
-            notes_in_chord = note_pattern.split('.')
-            notes = []
-            for current_note in notes_in_chord:
-                new_note = note.Note(int(current_note))
-                new_note._storedInstrument = instrument.fromString(instrument_name)
-                notes.append(new_note)
-            new_chord = chord.Chord(notes)
-            new_chord.offset = offset
-            output_notes.append(new_chord)
-        # pattern is a note
-        else:
-            new_note = note.Note(note_pattern)
-            new_note.offset = offset
-            new_note._storedInstrument = instrument.fromString(instrument_name)
-            output_notes.append(new_note)
-        # increase offset each iteration so that notes do not stack
-        offset += 0.5
-    return output_notes
+def stream_from_outputs(prediction_output):
+    midi_stream = stream.Score()
+    for key, value in USED_INSTRUMENTS.items():
+        offset = 0
+        p = stream.Part()
+        p.insert(instrument.fromString(key))
+        m1p = stream.Measure()
+        for pattern in prediction_output:
+            if pattern == 'R':
+                m1p.append(note.Rest())
+            # chord
+            elif ('.' in pattern) or pattern.isdigit():
+                notes_in_chord = pattern.split('.')
+                notes = []
+                for current_note in notes_in_chord:
+                    new_note = note.Note(current_note)
+                    notes.append(new_note)
+                new_chord = chord.Chord(notes)
+                new_chord.offset = offset
+                m1p.append(new_chord)
+            else:
+                new_note = note.Note(pattern)
+                new_note.offset = offset
+                m1p.append(new_note)
+            offset += NOTE_INTERVALS[key]
+        p.append(m1p)
+        midi_stream.insert(0, p)
+    return midi_stream
     
 def create_midi(prediction_output, output_file='test_output.mid'):
     """ convert the output from the prediction to notes and create a midi file
         from the notes """
-    
-    postprocessed_notes = handle_output_notes(prediction_output)
-    midi_stream = stream.Stream(postprocessed_notes)
+
+    midi_stream = stream_from_outputs(prediction_output)
     midi_stream.write('midi', fp=output_file)
 
 if __name__ == '__main__':
