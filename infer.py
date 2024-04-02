@@ -49,22 +49,24 @@ def handle_output_notes(prediction_output):
     output_notes = []
     offset = 0
     for pattern in prediction_output:
+        note_pattern = pattern.split("__")[0]
+        instrument_name = pattern.split("__")[1]
         # pattern is a chord
-        if ('.' in pattern) or pattern.isdigit():
-            notes_in_chord = pattern.split('.')
+        if ('.' in note_pattern) or note_pattern.isdigit():
+            notes_in_chord = note_pattern.split('.')
             notes = []
             for current_note in notes_in_chord:
                 new_note = note.Note(int(current_note))
-                # new_note.storedInstrument = instrument.Piano()
+                new_note.storedInstrument = instrument.fromString(instrument_name)
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
             output_notes.append(new_chord)
         # pattern is a note
         else:
-            new_note = note.Note(pattern)
+            new_note = note.Note(note_pattern)
             new_note.offset = offset
-            # new_note.storedInstrument = instrument.Piano()
+            new_note.storedInstrument = instrument.fromString(instrument_name)
             output_notes.append(new_note)
         # increase offset each iteration so that notes do not stack
         offset += 0.5

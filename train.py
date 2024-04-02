@@ -14,18 +14,29 @@ import argparse
 from music21 import converter, note, chord, instrument
 
 
+
+
 def extract_notes_from_midi(file_path):
     notes = []
     pick = None
-    midi = converter.parse(file_path)
-    songs = instrument.partitionByInstrument(midi)
-    for part in songs.parts:
-        pick = part.recurse()
-        for element in pick:
-            if isinstance(element, note.Note):
-                notes.append(str(element.pitch))
-            elif isinstance(element, chord.Chord):
-                notes.append(".".join(str(n) for n in element.normalOrder))
+    base_midi = converter.parse(file_path)
+    for part in base_midi.parts.stream():
+        instrument_name = "Piano"
+        songs = instrument.partitionByInstrument(part)
+        try:
+            used_instrument = instrument.fromString(part.partName)
+            instrument_name = used_instrument.instrumentName
+        except:
+            pass
+        pick = None
+        for song in songs:
+            pick = song.recurse()
+            for element in pick:
+                if isinstance(element, note.Note):
+                    notes.append(str(element.pitch) + "__" + instrument_name)
+                elif isinstance(element, chord.Chord):
+                    notes.append(".".join(str(n) for n in element.normalOrder))
+    
     return notes
 
 def parse_args():
