@@ -71,7 +71,7 @@ def handle_output_notes(prediction_output):
             new_note.storedInstrument = instrument.fromString(instrument_name)
             output_notes.append(new_note)
         # increase offset each iteration so that notes do not stack
-        offset += 0.55
+        offset += 0.65
     return output_notes
     
 def create_midi(prediction_output, output_file='test_output.mid'):
