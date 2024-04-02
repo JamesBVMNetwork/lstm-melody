@@ -11,19 +11,21 @@ import base64
 import json
 import pickle
 import argparse
-from music21 import converter, note, chord
+from music21 import converter, note, chord, instrument
 
 
 def extract_notes_from_midi(file_path):
     notes = []
-    base_midi = converter.parse(file_path)
-    for element in base_midi.flat.elements:
-        if isinstance(element, note.Rest) and element.offset != 0:
-            notes.append('R')
-        if isinstance(element, note.Note):
-            notes.append(str(element.pitch))
-        if isinstance(element, chord.Chord):
-            notes.append('.'.join(str(pitch) for pitch in element.pitches))
+    pick = None
+    midi = converter.parse(file_path)
+    songs = instrument.partitionByInstrument(midi)
+    for part in songs.parts:
+        pick = part.recurse()
+        for element in pick:
+            if isinstance(element, note.Note):
+                notes.append(str(element.pitch))
+            elif isinstance(element, chord.Chord):
+                notes.append(".".join(str(n) for n in element.normalOrder))
     return notes
 
 def parse_args():

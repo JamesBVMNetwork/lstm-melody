@@ -80,14 +80,12 @@ def stream_from_outputs(prediction_output):
             p.insert(instrument.fromString(key))
             m1p = stream.Measure()
             for pattern in prediction_output:
-                if pattern == 'R':
-                    m1p.append(note.Rest())
-                # chord
-                elif ('.' in pattern) or pattern.isdigit():
+                if ('.' in pattern) or pattern.isdigit():
                     notes_in_chord = pattern.split('.')
                     notes = []
                     for current_note in notes_in_chord:
-                        new_note = note.Note(current_note)
+                        new_note = note.Note(int(current_note))
+                        new_note.storedInstrument = instrument.Piano()
                         notes.append(new_note)
                     new_chord = chord.Chord(notes)
                     new_chord.offset = offset
