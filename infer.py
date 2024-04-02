@@ -10,23 +10,29 @@ from music21 import note, chord, instrument, stream
 SEQUENCE_LENGTH = 20
 
 USED_INSTRUMENTS = {
-    "Piano": True,
-    "Bass Drum": True,
-    "Guitar": True,
-    "Acoustic Bass": True,
-    "String Instrument": True,
+    "Piano RH": True,
+    "Bass Drum": False,
+    "Guitar": False,
+    "Acoustic Bass": False,
+    "String Instrument": False,
     "Violin": False,
-    "Saxophone": False
+    "Saxophone": False,
+    "Piano LH": True,
+    "Piano RH": True,
+    "Acoustic Grand Piano": True,
 }
 
 NOTE_INTERVALS = {
-    "Piano": 0.4,
+    "Piano": 0.5,
     "Bass Drum": 0.5,
     "Guitar": 0.7,
     "Acoustic Bass": 0.5,
     "String Instrument": 0.6,
     "Violin": 0.5,
-    "Saxophone": 0.5
+    "Saxophone": 0.5,
+    "Piano LH": 0.5,
+    "Piano RH": 0.5,
+    "Acoustic Grand Piano": 0.5,
 }
 
 def parse_args():
