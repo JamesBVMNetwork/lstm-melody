@@ -92,5 +92,5 @@ if __name__ == '__main__':
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
     input_notes = []
-    melody = generate_melody(input_notes, vocab, model, to_generate= 200)
+    melody = generate_melody(input_notes, vocab, model, to_generate= 100)
     create_midi(melody, output_file= args.output_path)
