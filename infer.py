@@ -45,39 +45,9 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 
     return prediction_output
 
-# def handle_output_notes(prediction_output):
-#     output_notes = []
-#     offset = 0
-#     for pattern in prediction_output:
-#         # pattern is a chord
-#         if ('.' in pattern) or pattern.isdigit():
-#             notes_in_chord = pattern.split('.')
-#             notes = []
-#             for current_note in notes_in_chord:
-#                 new_note = note.Note(int(current_note))
-#                 new_note.storedInstrument = instrument.Piano()
-#                 notes.append(new_note)
-#             new_chord = chord.Chord(notes)
-#             new_chord.offset = offset
-#             output_notes.append(new_chord)
-#         # pattern is a note
-#         else:
-#             new_note = note.Note(pattern)
-#             new_note.offset = offset
-#             new_note.storedInstrument = instrument.Piano()
-#             output_notes.append(new_note)
-#         # increase offset each iteration so that notes do not stack
-#         offset += 0.5
-#     return output_notes
-
-from music21 import note, chord, instrument
-
-def handle_output_notes(prediction_output, instrument_list):
+def handle_output_notes(prediction_output):
     output_notes = []
     offset = 0
-    # Define an index to loop through the instrument list
-    instrument_index = 0
-    
     for pattern in prediction_output:
         # pattern is a chord
         if ('.' in pattern) or pattern.isdigit():
@@ -85,8 +55,7 @@ def handle_output_notes(prediction_output, instrument_list):
             notes = []
             for current_note in notes_in_chord:
                 new_note = note.Note(int(current_note))
-                # Assign instrument from the instrument list
-                new_note.storedInstrument = instrument_list[instrument_index]
+                # new_note.storedInstrument = instrument.Piano()
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
@@ -94,17 +63,11 @@ def handle_output_notes(prediction_output, instrument_list):
         # pattern is a note
         else:
             new_note = note.Note(pattern)
-            # Assign instrument from the instrument list
-            new_note.storedInstrument = instrument_list[instrument_index]
             new_note.offset = offset
+            # new_note.storedInstrument = instrument.Piano()
             output_notes.append(new_note)
-        
-        # Increase offset each iteration so that notes do not stack
+        # increase offset each iteration so that notes do not stack
         offset += 0.5
-        
-        # Move to the next instrument in the instrument list
-        instrument_index = (instrument_index + 1) % len(instrument_list)
-    
     return output_notes
     
 def create_midi(prediction_output, output_file='test_output.mid'):
