@@ -48,6 +48,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 def handle_output_notes(prediction_output):
     output_notes = []
     offset = 0
+    print(prediction_output)
     for pattern in prediction_output:
         print(pattern)
         note_pattern = pattern.split("__")[0]
