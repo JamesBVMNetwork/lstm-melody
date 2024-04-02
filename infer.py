@@ -49,6 +49,7 @@ def handle_output_notes(prediction_output):
     output_notes = []
     offset = 0
     for pattern in prediction_output:
+        print(pattern)
         note_pattern = pattern.split("__")[0]
         instrument_name = pattern.split("__")[1]
         # pattern is a chord
