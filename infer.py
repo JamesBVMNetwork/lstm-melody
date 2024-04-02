@@ -59,7 +59,7 @@ def handle_output_notes(prediction_output):
             notes = []
             for current_note in notes_in_chord:
                 new_note = note.Note(int(current_note))
-                new_note.storedInstrument = instrument.fromString(instrument_name)
+                new_note._storedInstrument = instrument.fromString(instrument_name)
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
@@ -68,7 +68,7 @@ def handle_output_notes(prediction_output):
         else:
             new_note = note.Note(note_pattern)
             new_note.offset = offset
-            new_note.storedInstrument = instrument.fromString(instrument_name)
+            new_note._storedInstrument = instrument.fromString(instrument_name)
             output_notes.append(new_note)
         # increase offset each iteration so that notes do not stack
         offset += 0.5
