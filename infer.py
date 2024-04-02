@@ -10,7 +10,7 @@ from music21 import note, chord, instrument, stream
 SEQUENCE_LENGTH = 20
 
 USED_INSTRUMENTS = {
-    "Piano": False,
+    "Piano": True,
     "Bass Drum": False,
     "Guitar": False,
     "Acoustic Bass": False,
@@ -19,7 +19,7 @@ USED_INSTRUMENTS = {
     "Saxophone": False,
     "Piano LH": True,
     "Piano RH": True,
-    "Acoustic Grand Piano": True,
+    "Acoustic Grand Piano": False,
 }
 
 NOTE_INTERVALS = {
