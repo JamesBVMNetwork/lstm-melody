@@ -11,20 +11,20 @@ SEQUENCE_LENGTH = 20
 
 USED_INSTRUMENTS = {
     "Piano": True,
-    "BassDrum": True,
+    "Bass Drum": True,
     "Guitar": True,
-    "AcousticBass": True,
-    "StringInstrument": True,
+    "Acoustic Bass": True,
+    "String Instrument": True,
     "Violin": False,
     "Saxophone": False
 }
 
 NOTE_INTERVALS = {
     "Piano": 0.4,
-    "BassDrum": 0.5,
+    "Bass Drum": 0.5,
     "Guitar": 0.7,
-    "AcousticBass": 0.5,
-    "StringInstrument": 0.6,
+    "Acoustic Bass": 0.5,
+    "String Instrument": 0.6,
     "Violin": 0.5,
     "Saxophone": 0.5
 }
