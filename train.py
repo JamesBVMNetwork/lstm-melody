@@ -33,9 +33,11 @@ def extract_notes_from_midi(file_path):
             pick = song.recurse()
             for element in pick:
                 if isinstance(element, note.Note):
-                    notes.append(str(element.pitch) + "__" + instrument_name)
+                    pitch_note = str(element.pitch) + "__" + instrument_name
+                    notes.append(pitch_note)
                 elif isinstance(element, chord.Chord):
-                    notes.append(".".join(str(n) for n in element.normalOrder))
+                    chord_note = ".".join(str(n) for n in element.normalOrder) + "__" + instrument_name
+                    notes.append(chord_note)
     
     return notes
 
