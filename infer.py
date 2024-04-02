@@ -48,11 +48,11 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 def handle_output_notes(prediction_output):
     output_notes = []
     offset = 0
-    print(prediction_output)
     for pattern in prediction_output:
-        print(pattern)
         note_pattern = pattern.split("__")[0]
         instrument_name = pattern.split("__")[1]
+        if instrument_name != "Piano":
+            print(note_pattern, instrument_name)
         # pattern is a chord
         if ('.' in note_pattern) or note_pattern.isdigit():
             notes_in_chord = note_pattern.split('.')
@@ -71,7 +71,7 @@ def handle_output_notes(prediction_output):
             new_note.storedInstrument = instrument.fromString(instrument_name)
             output_notes.append(new_note)
         # increase offset each iteration so that notes do not stack
-        offset += 0.5
+        offset += 1.0
     return output_notes
     
 def create_midi(prediction_output, output_file='test_output.mid'):
@@ -92,5 +92,5 @@ if __name__ == '__main__':
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
     input_notes = []
-    melody = generate_melody(input_notes, vocab, model, to_generate= 100)
+    melody = generate_melody(input_notes, vocab, model, to_generate= 200)
     create_midi(melody, output_file= args.output_path)
