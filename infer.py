@@ -90,6 +90,9 @@ def stream_from_outputs(prediction_output):
                     new_chord = chord.Chord(notes)
                     new_chord.offset = offset
                     m1p.append(new_chord)
+                if pattern == 'rest':
+                    new_note = note.Rest()
+                    m1p.append(new_note)
                 else:
                     new_note = note.Note(pattern)
                     new_note.offset = offset
