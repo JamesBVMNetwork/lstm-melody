@@ -80,8 +80,8 @@ def stream_from_outputs(prediction_output):
             p.insert(instrument.fromString(key))
             m1p = stream.Stream()
             for pattern in prediction_output:
-                print(pattern)
                 if ('.' in pattern) or pattern.isdigit():
+                    print(pattern)
                     notes_in_chord = pattern.split('.')
                     notes = []
                     for current_note in notes_in_chord:
