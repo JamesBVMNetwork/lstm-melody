@@ -10,29 +10,29 @@ from music21 import note, chord, instrument, stream
 SEQUENCE_LENGTH = 20
 
 USED_INSTRUMENTS = {
-    "Piano": False,
+    "Piano": True,
     "Bass Drum": True,
-    "Guitar": False,
+    "Guitar": True,
     "Acoustic Bass": False,
     "String Instrument": False,
     "Violin": False,
     "Saxophone": False,
     "Piano LH": True,
     "Piano RH": True,
-    "Acoustic Grand Piano": True,
+    "Acoustic Grand Piano": False,
 }
 
 NOTE_INTERVALS = {
-    "Piano": 0.5,
-    "Bass Drum": 0.5,
-    "Guitar": 0.7,
-    "Acoustic Bass": 0.5,
-    "String Instrument": 0.6,
-    "Violin": 0.5,
+    "Piano": 0.45,
+    "Bass Drum": 0.45,
+    "Guitar": 0.45,
+    "Acoustic Bass": 0.45,
+    "String Instrument": 0.45,
+    "Violin": 0.45,
     "Saxophone": 0.5,
-    "Piano LH": 0.5,
-    "Piano RH": 0.5,
-    "Acoustic Grand Piano": 0.53,
+    "Piano LH": 0.45,
+    "Piano RH": 0.45,
+    "Acoustic Grand Piano": 0.45,
 }
 
 def parse_args():
@@ -81,7 +81,6 @@ def stream_from_outputs(prediction_output):
             output_notes = []
             for pattern in prediction_output:
                 if ('.' in pattern) or pattern.isdigit():
-                    print(pattern)
                     notes_in_chord = pattern.split('.')
                     notes = []
                     for current_note in notes_in_chord:
@@ -90,9 +89,6 @@ def stream_from_outputs(prediction_output):
                     new_chord = chord.Chord(notes)
                     new_chord.offset = offset
                     output_notes.append(new_chord)
-                elif pattern == 'rest':
-                    new_note = note.Rest()
-                    output_notes.append(new_note)
                 else:
                     new_note = note.Note(pattern)
                     new_note.offset = offset
@@ -121,5 +117,5 @@ if __name__ == '__main__':
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
     input_notes = []
-    melody = generate_melody(input_notes, vocab, model, to_generate= 100)
+    melody = generate_melody(input_notes, vocab, model, to_generate= 150)
     create_midi(melody, output_file= args.output_path)

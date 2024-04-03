@@ -26,8 +26,6 @@ def extract_notes_from_midi(file_path):
                 notes.append(str(element.pitch))
             elif isinstance(element, chord.Chord):
                 notes.append(".".join(str(n) for n in element.normalOrder))
-            if isinstance(element, note.Rest) and element.offset != 0:
-                notes.append('rest')
             else:
                 pass
     return notes
@@ -111,7 +109,7 @@ def create_model(config, model_path = None):
         tf.keras.layers.InputLayer(input_shape=(sequence_length,)),
         tf.keras.layers.Embedding(n_vocab, embedding_dim, input_length=sequence_length),
         tf.keras.layers.LSTM(units = rnn_units, return_sequences=True),
-        tf.keras.layers.LSTM(units = int(2 * rnn_units)),
+        tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
     ])
     model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
