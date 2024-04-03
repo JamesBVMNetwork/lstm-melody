@@ -79,6 +79,7 @@ def stream_from_outputs(prediction_output):
             p = stream.Part()
             p.insert(instrument.fromString(key))
             m1p = stream.Stream()
+            output_notes = []
             for pattern in prediction_output:
                 if ('.' in pattern) or pattern.isdigit():
                     print(pattern)
@@ -89,16 +90,17 @@ def stream_from_outputs(prediction_output):
                         notes.append(new_note)
                     new_chord = chord.Chord(notes)
                     new_chord.offset = offset
-                    m1p.append(new_chord)
+                    output_notes.append(new_chord)
                 elif pattern == 'rest':
                     new_note = note.Rest()
-                    m1p.append(new_note)
+                    output_notes.append(new_note)
                 else:
                     new_note = note.Note(pattern)
                     new_note.offset = offset
-                    m1p.append(new_note)
+                    output_notes.append(new_note)
                 offset += NOTE_INTERVALS[key]
-            p.append(m1p)
+            m1p = stream.Stream(output_notes)
+            p.insert(0, m1p)
             midi_stream.insert(0, p)
     
     # output_notes = []
