@@ -31,8 +31,8 @@ NOTE_INTERVALS = {
     "Violin": 0.5,
     "Saxophone": 0.5,
     "Piano LH": 0.5,
-    "Piano RH": 0.7,
-    "Acoustic Grand Piano": 0.3,
+    "Piano RH": 0.5,
+    "Acoustic Grand Piano": 0.5,
 }
 
 def parse_args():
