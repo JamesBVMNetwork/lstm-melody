@@ -78,7 +78,6 @@ def stream_from_outputs(prediction_output):
             offset = 0
             p = stream.Part()
             p.insert(instrument.fromString(key))
-            m1p = stream.Stream()
             output_notes = []
             for pattern in prediction_output:
                 if ('.' in pattern) or pattern.isdigit():
