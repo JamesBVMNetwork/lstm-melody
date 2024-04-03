@@ -27,7 +27,7 @@ def extract_notes_from_midi(file_path):
             elif isinstance(element, chord.Chord):
                 notes.append(".".join(str(n) for n in element.normalOrder))
             if isinstance(element, note.Rest) and element.offset != 0:
-                notes.append('R')
+                notes.append('rest')
             else:
                 pass
     return notes
