@@ -72,6 +72,7 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
     return prediction_output
 
 def stream_from_outputs(prediction_output):
+    print(prediction_output)
     midi_stream = stream.Score()
     for key, value in USED_INSTRUMENTS.items():
         if value:
