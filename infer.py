@@ -72,7 +72,6 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
     return prediction_output
 
 def stream_from_outputs(prediction_output):
-    print(prediction_output)
     midi_stream = stream.Score()
     for key, value in USED_INSTRUMENTS.items():
         if value:
@@ -81,6 +80,7 @@ def stream_from_outputs(prediction_output):
             p.insert(instrument.fromString(key))
             m1p = stream.Stream()
             for pattern in prediction_output:
+                print(pattern)
                 if ('.' in pattern) or pattern.isdigit():
                     notes_in_chord = pattern.split('.')
                     notes = []
@@ -90,7 +90,7 @@ def stream_from_outputs(prediction_output):
                     new_chord = chord.Chord(notes)
                     new_chord.offset = offset
                     m1p.append(new_chord)
-                if pattern == 'rest':
+                elif pattern == 'rest':
                     new_note = note.Rest()
                     m1p.append(new_note)
                 else:
