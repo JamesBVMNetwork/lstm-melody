@@ -11,8 +11,8 @@ SEQUENCE_LENGTH = 20
 
 USED_INSTRUMENTS = {
     "Piano": True,
-    "Bass Drum": False,
-    "Guitar": False,
+    "Bass Drum": True,
+    "Guitar": True,
     "Acoustic Bass": False,
     "String Instrument": False,
     "Violin": False,
@@ -32,7 +32,7 @@ NOTE_INTERVALS = {
     "Saxophone": 0.5,
     "Piano LH": 0.4,
     "Piano RH": 0.4,
-    "Acoustic Grand Piano": 0.7,
+    "Acoustic Grand Piano": 0.5,
 }
 
 def parse_args():
@@ -102,30 +102,6 @@ def stream_from_outputs(prediction_output):
             p.insert(0, m1p)
             midi_stream.insert(0, p)
     
-    # output_notes = []
-    # offset = 0
-    # for pattern in prediction_output:
-    #     # pattern is a chord
-    #     if ('.' in pattern) or pattern.isdigit():
-    #         notes_in_chord = pattern.split('.')
-    #         notes = []
-    #         for current_note in notes_in_chord:
-    #             new_note = note.Note(int(current_note))
-    #             notes.append(new_note)
-    #         new_chord = chord.Chord(notes)
-    #         new_chord.offset = offset
-    #         output_notes.append(new_chord)
-    #     # pattern is a note
-    #     elif pattern == 'rest':
-    #         new_note = note.Rest()
-    #         output_notes.append(new_note)
-    #     else:
-    #         new_note = note.Note(pattern)
-    #         new_note.offset = offset
-    #         output_notes.append(new_note)
-    #     # increase offset each iteration so that notes do not stack
-    #     offset += 0.5
-    # midi_stream = stream.Stream(output_notes)
     return midi_stream
     
 def create_midi(prediction_output, output_file='test_output.mid'):
