@@ -1,9 +1,8 @@
-import os
 import json
 import base64
 import struct
 import argparse
-import numpy as np
+from loguru import logger
 import tensorflow as tf
 from tqdm import *
 from dataset import MelodyDataset
@@ -143,15 +142,19 @@ def main():
     config_path = args.config_path
     with open(config_path, 'r') as f:
         config = json.load(f)
-
+    logger.info(f"Creating dataset from {data_dir}")
     dataset = MelodyDataset({"data_dir": data_dir, "sequence_length": config["seq_length"]})
+    logger.info("Dataset created")
     X, y = dataset.get_training_data()
     vocabulary = dataset.get_vocab()
     config["n_vocab"] = len(vocabulary)
+    logger.info("Creating model")
     model = create_model(config, ckpt)
+    logger.info("Model created")
     model.summary()
+    logger.info("Training model")
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
-    print(vocabulary)
+    logger.info("Model trained")
     get_model_for_export(output_path, model, vocabulary)
     # save model 
     model.save(output_path.replace(".json", ".h5"))

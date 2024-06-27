@@ -1,9 +1,26 @@
-import os
 import tqdm
 import pickle
 import numpy as np
-from music21 import converter, instrument, note, chord
+import pandas as pd
+from music21 import converter, instrument, chord, note, stream
 from utils import list_files_recursive
+
+
+def extract_notes_from_midi(file_path):
+    notes = []
+    pick = None
+    midi = converter.parse(file_path)
+    songs = instrument.partitionByInstrument(midi)
+    for part in songs.parts:
+        pick = part.recurse()
+        for element in pick:
+            if isinstance(element, note.Note):
+                notes.append(str(element.pitch))
+            elif isinstance(element, chord.Chord):
+                notes.append(".".join(str(n) for n in element.normalOrder))
+            else:
+                pass
+    return notes
 
 class MelodyDataset:
     def __init__(self, config):
@@ -17,23 +34,15 @@ class MelodyDataset:
 
     def _create_corpus(self):
         corpus = []
-        for file in self.files:
+        for file in tqdm.tqdm(self.files, total = len(self.files)):
             if file.endswith('.mid'):
-                notes = []
-                midi = converter.parse(file)
-                songs = instrument.partitionByInstrument(midi)
-                for part in songs.parts:
-                    pick = part.recurse()
-                    for element in pick:
-                        if isinstance(element, note.Note):
-                            notes.append(str(element.pitch))
-                        elif isinstance(element, chord.Chord):
-                            notes.append(".".join(str(n) for n in element.normalOrder))
+                corpus = corpus + extract_notes_from_midi(file)
             elif file.endswith('.pickle'):
                 with open(file, 'rb') as f:
-                    notes = pickle.load(f)
-                for note in notes:
-                    corpus.append(str(note))
+                    note_list = pickle.load(f)
+                    corpus = corpus + note_list
+            else:
+                continue
         return corpus
 
     def get_corpus(self):
@@ -70,5 +79,4 @@ class MelodyDataset:
 if __name__=="__main__":
     dataset = MelodyDataset({"data_dir": "data"})
     X, y = dataset.get_training_data()    
-    print(dataset.get_vocab()[0])
-    print(type(dataset.get_vocab()[0]))
+

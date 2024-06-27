@@ -40,9 +40,8 @@ def chords_n_notes(Snippet):
     Melody = []
     offset = 0 
     for i in Snippet:
-        #If it is chord
         if ("." in i or i.isdigit()):
-            chord_notes = i.split(".") #Seperating the notes in chord
+            chord_notes = i.split(".")
             notes = [] 
             for j in chord_notes:
                 inst_note=int(j)
@@ -51,12 +50,10 @@ def chords_n_notes(Snippet):
                 chord_snip = chord.Chord(notes)
                 chord_snip.offset = offset
                 Melody.append(chord_snip)
-        # pattern is a note
         else: 
             note_snip = note.Note(i)
             note_snip.offset = offset
             Melody.append(note_snip)
-        # increase offset each iteration so that notes do not stack
         offset += 1
     Melody_midi = stream.Stream(Melody)   
     return Melody_midi
@@ -77,7 +74,6 @@ if __name__ == '__main__':
     model.summary()
     with open(model_config_path, 'r') as f:
         vocab = json.load(f)["vocabulary"]
-    input_notes = [68, 67, 25, 78, 35]
+    input_notes = [0, 3, 2, 0]
     melody = generate_melody(input_notes, vocab, model, to_generate= 100)
-    print(melody)
     create_midi(melody, output_file = args.output_path)
