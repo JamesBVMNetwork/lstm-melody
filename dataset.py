@@ -2,7 +2,7 @@ import os
 import tqdm
 import pickle
 import numpy as np
-from music21 import *
+from music21 import converter, instrument, note, chord
 from utils import list_files_recursive
 
 class MelodyDataset:
@@ -11,7 +11,7 @@ class MelodyDataset:
         assert "data_dir" in config, "data_dir is required in config for MelodyDataset"
         self.files = list_files_recursive(config["data_dir"])
         self.corpus = self._create_corpus()
-        self.note_names = sorted(set(item for item in self.corpus))
+        self.note_names = sorted(list(set(self.corpus)))
         self.note_to_index = dict((note, number) for number, note in enumerate(self.note_names))
         self.index_to_note = dict((number, note) for number, note in enumerate(self.note_names))
 
@@ -20,7 +20,6 @@ class MelodyDataset:
         for file in self.files:
             if file.endswith('.mid'):
                 notes = []
-                notes_to_parse = None
                 midi = converter.parse(file)
                 songs = instrument.partitionByInstrument(midi)
                 for part in songs.parts:
@@ -33,7 +32,8 @@ class MelodyDataset:
             elif file.endswith('.pickle'):
                 with open(file, 'rb') as f:
                     notes = pickle.load(f)
-        corpus = corpus + notes
+                for note in notes:
+                    corpus.append(str(note))
         return corpus
 
     def get_corpus(self):
@@ -69,4 +69,6 @@ class MelodyDataset:
 
 if __name__=="__main__":
     dataset = MelodyDataset({"data_dir": "data"})
-    X, y = dataset.get_training_data(10)    
+    X, y = dataset.get_training_data()    
+    print(dataset.get_vocab()[0])
+    print(type(dataset.get_vocab()[0]))

@@ -151,7 +151,10 @@ def main():
     model = create_model(config, ckpt)
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
+    print(vocabulary)
     get_model_for_export(output_path, model, vocabulary)
+    # save model 
+    model.save(output_path.replace(".json", ".h5"))
 
 if __name__ == "__main__":
     main()

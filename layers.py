@@ -1,7 +1,7 @@
 class InputLayer:   
     def __init__(self, cfg):
-        assert "shape" in cfg, "shape is required for InputLayer"
-        self.batch_input_shape = cfg["shape"]
+        assert "batch_shape" in cfg, "batch_input_shape is required for InputLayer"
+        self.batch_input_shape = cfg["batch_shape"]
     
     def get_layer_config(self):
         return {"batch_input_shape": self.batch_input_shape}
@@ -25,7 +25,46 @@ class Dense:
     
     def get_layer_config(self):
         return {"units": self.units, "activation": self.activation}
+    
 
+class Sigmoid:
+    def __init__(self, cfg):
+        pass
+
+    def get_layer_config(self):
+        return {}
+    
+class ReLU:
+    def __init__(self, cfg):
+        pass
+
+    def get_layer_config(self):
+        return {}
+    
+class Softmax:
+    def __init__(self, cfg):
+        pass
+
+    def get_layer_config(self):
+        return {}
+    
+class Linear:
+    def __init__(self, cfg):
+        pass
+
+    def get_layer_config(self):
+        return {}
+    
+class Rescale:
+    def __init__(self, cfg):
+        assert "scale" in cfg, "scale is required for Rescale"
+        self.scale = cfg["scale"]
+        assert "offset" in cfg, "offset is required for Rescale"
+        self.offset = cfg["offset"]
+    
+    def get_layer_config(self):
+        return {"scale": self.scale, "offset": self.offset}
+    
 class Conv2D:
     def __init__(self, cfg):
         assert "filters" in cfg, "filters is required for Conv2D"
