@@ -14,7 +14,7 @@ MELODY_NO_EVENT = 129  # (no change from previous event)
 # This can encode monophonic music only.
 MELODY_SIZE = 130
 
-SEQUENCE_LENGTH = 40
+SEQUENCE_LENGTH = 20
 
 def noteArrayToDataFrame(note_array):
     """
@@ -48,21 +48,35 @@ def noteArrayToStream(note_array):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate music using a trained model')
-    parser.add_argument('--model-dir', type=str, default='model', help='Directory to load model')
-    parser.add_argument('--output-path', type=str, default='output.mid', help='Path to save generated music')
+    parser.add_argument('--model', type=str, default='model.json', help='File to the exported model')
+    parser.add_argument('-o', '--output-path', type=str, default='output.mid', help='Path to save generated music')
     return parser.parse_args()
 
 
 def load_model_from_ckpt(ckpt):
     return tf.keras.models.load_model(ckpt)
 
+def nearest_args(note, keys):
+    return min(keys, key=lambda x: abs(x - note))
 
-
-def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_generate = 10):
+def generate_melody(input_notes, vocab, model, seq_length=SEQUENCE_LENGTH, to_generate=10, sample=None):
     input_notes = input_notes[-seq_length: ]
-    for i in range(seq_length - len(input_notes)):
-        input_notes.insert(0, np.random.choice(vocab))
+    
+    vocab = {int(k): v for k, v in vocab.items()}
+    keys = list(vocab.keys())
+
+    if sample is not None or not os.path.exists(sample):
+        for i in range(seq_length - len(input_notes)):
+            input_notes.insert(0, np.random.choice(keys))
+    else:
+        offset = np.random.randint(0, len(sample) - seq_length)
+        padding_size = seq_length - len(input_notes)
+        padding = sample[offset: offset + padding_size].tolist()
+        input_notes = padding + input_notes
+
+    input_notes = [vocab.get(note, vocab[nearest_args(note, keys)]) for note in input_notes]
     prediction_output = []
+    rev = {v: int(k) for k, v in vocab.items()}
 
     temperature = 1.0
     for i in range(to_generate):
@@ -73,10 +87,10 @@ def generate_melody(input_notes, vocab, model, seq_length = SEQUENCE_LENGTH, to_
 
         predicted_ids = tf.random.categorical(prediction_logits, num_samples=1)
         prediction = tf.squeeze(predicted_ids, axis=-1)
-        # print(prediction)
 
-        prediction_output.append(vocab[prediction[0]])
-        input_notes = input_notes[1:] + [vocab[prediction[0]]]
+        pred_int = prediction.numpy()
+        prediction_output.append(rev[pred_int[0]])
+        input_notes = input_notes[1:] + [pred_int[0]]
 
     return prediction_output
     
@@ -101,13 +115,21 @@ def create_midi(prediction_output, output_file='test_output.mid'):
 
 if __name__ == '__main__':
     args = parse_args()
-    model_dir = args.model_dir
-    checkpoint_path = os.path.join(model_dir, 'model.h5')
-    model_config_path = os.path.join(model_dir, 'model.json')
+    model = args.model
+    checkpoint_path = 'model.h5'
+    model_config_path = 'model.json'
     model = load_model_from_ckpt(checkpoint_path)
     model.summary()
+
     with open(model_config_path, 'r') as f:
-        vocab = json.load(f)["vocabulary"]
-    input_notes = [68, 67, 25, 78, 35]
-    melody = generate_melody(input_notes, vocab, model, to_generate= 100)
-    create_midi(melody, output_file= args.output_path)
+        data = json.load(f)
+        vocab = data["vocabulary"]
+        sample = data.get("sample")
+
+
+    os.makedirs('output', exist_ok=True)
+
+    for i in range(300):
+        input_notes = [np.random.randint(0, MELODY_SIZE) for _ in range(np.random.randint(1, 10))]
+        melody = generate_melody(input_notes, vocab, model, to_generate=100, sample=sample)
+        create_midi(melody, output_file=os.path.join('output', f'output_{i}.mid'))

@@ -1,19 +1,27 @@
-import os
 from tqdm import *
 
-import os
+import os, warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=Warning)
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+tf.get_logger().setLevel('INFO')
+tf.autograph.set_verbosity(0)
+import logging
+tf.get_logger().setLevel(logging.ERROR)
+
 import struct
 import base64
 import json
 import pickle
 import argparse
 from music21 import converter, note, chord, stream
-
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing
+import glob
 
 
 # Melody-RNN Format is a sequence of 8-bit integers indicating the following:
@@ -26,20 +34,24 @@ MELODY_SIZE = 130
 
 def parse_args():
     parser = argparse.ArgumentParser("Entry script to launch training")
-    parser.add_argument("--data-dir", type=str, default = "./data", help="Path to the data directory")
-    parser.add_argument("--output-path", type=str, default = './model.json', help="Path to the output file")
-    parser.add_argument("--config-path", type=str, required = True, help="Path to the output file")
-    parser.add_argument("--checkpoint-path", type = str, default = None,  help="Path to the checkpoint file")
+    parser.add_argument("--data-dir", type=str, default="./data", help="Path to the data directory")
+    parser.add_argument("--output-path", type=str, default='./model.json', help="Path to the output file")
+    parser.add_argument("--config-path", type=str, default="config.json", help="Path to the output file")
+    parser.add_argument("--checkpoint-path", type=str, default='model.h5',  help="Path to the checkpoint file")
+    parser.add_argument("--output-ds", type=str, default="chains", help="Path to the output dataset file")
     return parser.parse_args()
             
 
-def streamToNoteArray(stream):
+def streamToNoteArray(path):
     """
     Convert a Music21 sequence to a numpy array of int8s into Melody-RNN format:
         0-127 - note on at specified pitch
         128   - note off
         129   - no event
     """
+    
+    stream = converter.parse(path).parts[0]
+    
     # Part one, extract from stream
     total_length = int(np.round(stream.flatten().highestTime / 0.25)) # in semiquavers
     stream_list = []
@@ -102,29 +114,28 @@ def noteArrayToStream(note_array):
 def make_training_data(data_dir, config):
     notes = []
     sequence_length = config["seq_length"]
-    file_paths = []
 
-    def list_files_recursive(directory):
-        for entry in os.listdir(directory):
-            full_path = os.path.join(directory, entry)
-            if os.path.isdir(full_path):
-                list_files_recursive(full_path)
-            elif os.path.isfile(full_path):
-                file_paths.append(full_path)
-
-    list_files_recursive(data_dir)
+    file_paths = glob.glob(os.path.join(data_dir, "**", "*.mid"), recursive=True) \
+        + glob.glob(os.path.join(data_dir, "**", "*.pickle"), recursive=True) \
+        + glob.glob(os.path.join(data_dir, "*.midi")) \
+        + glob.glob(os.path.join(data_dir, "*.pkl"))
+    
+    futures = []
+    executor = ProcessPoolExecutor(max_workers=multiprocessing.cpu_count())
     
     for file_path in tqdm(file_paths):
-        if file_path.endswith('.mid'):
-            s = converter.parse(file_path)
-            arr = streamToNoteArray(s.parts[0])
-            for item in arr:
-                notes.append(item)
-        elif file_path.endswith('.pickle'):
+        if file_path.endswith('.mid') or file_path.endswith('.midi'):
+            futures.append(executor.submit(streamToNoteArray, file_path))
+        elif file_path.endswith('.pickle') or file_path.endswith('.pkl'):
             with open(file_path, 'rb') as f:
                 arr = pickle.load(f)
                 for item in arr:
                     notes.append(item)
+
+    for future in tqdm(futures):
+        arr = future.result()
+        for item in arr:
+            notes.append(item)
 
     pitchnames = sorted(set(item for item in notes))
     # create a dictionary to map pitches to integers
@@ -132,18 +143,20 @@ def make_training_data(data_dir, config):
 
     inputs = []
     targets = []
+
+    notes = np.array(notes).astype(np.uint8)
+
     # create input sequences and the corresponding outputs
     for i in range(0, len(notes) - sequence_length):
-        sequence_in = notes[i:i + sequence_length]
-        sequence_out = notes[i + sequence_length]
+        sequence_in = [note_to_index[e] for e in notes[i:i + sequence_length]]
+        sequence_out = note_to_index[notes[i + sequence_length]]
         inputs.append(sequence_in)
-        # inputs.append([note_to_index[char] for char in sequence_in])
-        targets.append([note_to_index[sequence_out]])
+        targets.append([sequence_out])
     
     # reshape the input into a format compatible with LSTM layers
-    inputs = np.reshape(inputs, (len(inputs), sequence_length, 1))/MELODY_SIZE
+    inputs = np.reshape(inputs, (len(inputs), sequence_length))
     targets = np.array(targets)
-    return inputs, targets, note_to_index
+    return inputs, targets, note_to_index, notes
 
 
 
@@ -151,17 +164,22 @@ def create_model(config, model_path = None):
     rnn_units = config["rnn_units"]
     n_vocab = config["n_vocab"]
     sequence_length = config["seq_length"]
+    embedding_dim = config["embedding_dim"]
 
-    if model_path is not None:
-        model = tf.keras.models.load_model(model_path)
-        return model
+    if model_path is not None and os.path.exists(model_path):
+        try:
+            model = tf.keras.models.load_model(model_path)
+            return model
+        except:
+            pass
 
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(sequence_length, 1)),
+        tf.keras.layers.InputLayer(input_shape=(sequence_length, )),
+        tf.keras.layers.Embedding(n_vocab, embedding_dim),
         tf.keras.layers.LSTM(units = rnn_units),
         tf.keras.layers.Dense(n_vocab)
     ])
-    model.compile(loss= tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
+    model.compile(loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam', metrics=['accuracy'])
     return model
 
 
@@ -236,7 +254,7 @@ def compressConfig(data):
         }
     }
 
-def get_model_for_export(output_path, model, vocabulary):
+def get_model_for_export(output_path, model, vocabulary, sample):
     weight_np = get_weights(model)
 
     weight_bytes = bytearray()
@@ -260,7 +278,8 @@ def get_model_for_export(output_path, model, vocabulary):
             "model_name": "musicnetgen",
             "layers_config": compressed_config,
             "weight_b64": weight_base64,
-            "vocabulary": vocabulary
+            "vocabulary": vocabulary,
+            "sample": sample
         }, f)
     return weight_base64, compressed_config
 
@@ -274,19 +293,14 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
     
-    X, y, note_to_index = make_training_data(data_dir, config)
-    
-    X, y, note_to_index = make_training_data(data_dir, config)
+    X, y, note_to_index, notes = make_training_data(data_dir, config)
 
-    vocabulary = []
-    for key, value in note_to_index.items():
-        vocabulary.append(int(key))
-
-    config["n_vocab"] = len(vocabulary)
+    config["n_vocab"] = len(note_to_index)
     model = create_model(config, ckpt)
     model.summary()
     model.fit(X, y, epochs=config["epoch_num"], batch_size = config["batch_size"])
-    get_model_for_export(output_path, model, vocabulary)
+    get_model_for_export(output_path, model, {int(k): v for k, v in note_to_index.items()}, notes.tolist())
+    model.save(ckpt)
 
 if __name__ == "__main__":
     main()
